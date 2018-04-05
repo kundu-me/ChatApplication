@@ -1,12 +1,10 @@
-package com.nxkundu.server.main;
-
-import com.nxkundu.server.service.ServerService;
+package com.nxkundu.client.main;
 
 public class Main {
 	
 	public static void main(String[] args) {
 		
-		new ServerService().startServer(8005);
+		
 	}
 
 }

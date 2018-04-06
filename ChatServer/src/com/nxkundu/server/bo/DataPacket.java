@@ -1,72 +1,76 @@
 package com.nxkundu.server.bo;
 
-import java.net.DatagramPacket;
-import java.net.InetAddress;
-import java.util.Arrays;
+import com.google.gson.Gson;
 
+/**
+ * 
+ * @author nxkundu
+ *
+ */
 public class DataPacket {
 	
-	private byte[] data;
-	private InetAddress inetAddress;
-	private int port;
+	public static final String ACTION_TYPE_MESSAGE = "MESSAGE";
+	public static final String MESSAGE_TYPE_MESSAGE = "MESSAGE";
 	
-	private DatagramPacket datagramPacket;
+	private String action;
 	
-	public DataPacket(byte[] data, InetAddress inetAddress, int port) {
+	private String messageType;
+	
+	private Client fromClient;
+	private Client toClient;
+	
+	private String message;
+
+	public DataPacket(String action) {
 		super();
+		this.action = action;
+	}
+
+	public String getAction() {
+		return action;
+	}
+
+	public void setAction(String action) {
+		this.action = action;
+	}
+
+	public String getMessageType() {
+		return messageType;
+	}
+
+	public void setMessageType(String messageType) {
+		this.messageType = messageType;
+	}
+
+	public Client getFromClient() {
+		return fromClient;
+	}
+
+	public void setFromClient(Client fromClient) {
+		this.fromClient = fromClient;
+	}
+
+	public Client getToClient() {
+		return toClient;
+	}
+
+	public void setToClient(Client toClient) {
+		this.toClient = toClient;
+	}
+
+	public String getMessage() {
+		return message;
+	}
+
+	public void setMessage(String message) {
+		this.message = message;
+	}
+	
+	public String toJSON() {
 		
-		this.data = data;
-		this.inetAddress = inetAddress;
-		this.port = port;
-		
-		this.datagramPacket = new DatagramPacket(data, data.length, inetAddress, port);
+		Gson gson = new Gson();
+		String strJSON = gson.toJson(this);
+		return strJSON;
 	}
-	
-	public DataPacket() {
-		
-		this.data = new byte[1024*60];
-		this.datagramPacket = new DatagramPacket(data, data.length);
-	}
-
-	public byte[] getData() {
-		return data;
-	}
-
-	public void setData(byte[] data) {
-		this.data = data;
-	}
-
-	public InetAddress getInetAddress() {
-		return inetAddress;
-	}
-
-	public void setInetAddress(InetAddress inetAddress) {
-		this.inetAddress = inetAddress;
-	}
-
-	public int getPort() {
-		return port;
-	}
-
-	public void setPort(int port) {
-		this.port = port;
-	}
-
-	public DatagramPacket getDatagramPacket() {
-		return datagramPacket;
-	}
-
-	public void setDatagramPacket(DatagramPacket datagramPacket) {
-		this.datagramPacket = datagramPacket;
-	}
-
-	@Override
-	public String toString() {
-		return "DataPacket [data=" + Arrays.toString(data) + ", inetAddress=" + inetAddress + ", port=" + port
-				+ ", datagramPacket=" + datagramPacket + "]";
-	}
-	
-	
-	
 
 }

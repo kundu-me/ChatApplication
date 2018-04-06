@@ -19,19 +19,15 @@ public class Client implements Serializable{
 	private String name;
 	
 	private InetAddress inetAddress;
-	
-	
 	private int port;
-	public int retries;
 	
 	
-	public Client(String id, String name, InetAddress inetAddress, int port, int retries) {
+	public Client(String id, String name, InetAddress inetAddress, int port) {
 		super();
 		this.id = id;
 		this.name = name;
 		this.inetAddress = inetAddress;
 		this.port = port;
-		this.retries = retries;
 	}
 
 
@@ -75,22 +71,8 @@ public class Client implements Serializable{
 	}
 
 
-	public int getRetries() {
-		return retries;
-	}
-
-
-	public void setRetries(int retries) {
-		this.retries = retries;
-	}
-
-
 	@Override
 	public String toString() {
-		return "Client [id=" + id + ", name=" + name + ", inetAddress=" + inetAddress + ", port=" + port + ", retries="
-				+ retries + "]";
+		return "Client [id=" + id + ", name=" + name + ", inetAddress=" + inetAddress + ", port=" + port + "]";
 	}
-	
-	
-
 }

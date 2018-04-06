@@ -2,7 +2,9 @@ package com.nxkundu.server.bo;
 
 import java.io.Serializable;
 import java.net.DatagramSocket;
+import java.net.InetAddress;
 import java.net.SocketException;
+import java.net.UnknownHostException;
 
 /**
  * 
@@ -19,11 +21,37 @@ public class Server implements Serializable{
 	private DatagramSocket datagramSocket;
 	private int port;
 	
-	public Server(int port) throws SocketException {
+	private String hostName;
+	private InetAddress inetAddress;
+	
+	public static Server server;
+	
+	private Server() throws UnknownHostException {
 		super();
 		
-		this.port = port;
-		this.datagramSocket = new DatagramSocket(port);
+		this.hostName = "localhost";
+		this.inetAddress = InetAddress.getByName(this.hostName);
+		this.port = 8005;
+		
+	}
+	
+	public static Server getInstance() throws UnknownHostException {
+		
+		if(server == null) {
+			server = new Server();
+		}
+		
+		return server;
+	}
+	
+	public void startServer() throws SocketException {
+		
+		this.datagramSocket = new DatagramSocket(this.port);
+	}
+	
+	public void connectToServer() throws SocketException {
+		
+		this.datagramSocket = new DatagramSocket();
 	}
 	
 	public DatagramSocket getDatagramSocket() {
@@ -42,11 +70,26 @@ public class Server implements Serializable{
 		this.port = port;
 	}
 
+	public String getHostName() {
+		return hostName;
+	}
+
+	public void setHostName(String hostName) {
+		this.hostName = hostName;
+	}
+
+	public InetAddress getInetAddress() {
+		return inetAddress;
+	}
+
+	public void setInetAddress(InetAddress inetAddress) {
+		this.inetAddress = inetAddress;
+	}
+
 	@Override
 	public String toString() {
-		return "Server [datagramSocket=" + datagramSocket + ", port=" + port + "]";
+		return "Server [datagramSocket=" + datagramSocket + ", port=" + port + ", hostName=" + hostName
+				+ ", inetAddress=" + inetAddress + "]";
 	}
-	
-	
 
 }

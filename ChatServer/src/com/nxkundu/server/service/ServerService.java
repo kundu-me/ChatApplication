@@ -3,10 +3,15 @@ package com.nxkundu.server.service;
 import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.SocketException;
+import java.net.UnknownHostException;
 
 import com.nxkundu.server.bo.DataPacket;
 import com.nxkundu.server.bo.Server;
-
+/**
+ * 
+ * @author nxkundu
+ *
+ */
 public class ServerService implements Runnable{
 	
 	private Server server;
@@ -22,19 +27,24 @@ public class ServerService implements Runnable{
 		this.isService = false;
 	}
 	
-	public void startServer(int port) {
+	public void startServer() {
 		
 		System.out.println("Starting Server ...");
 		
 		try {
 			
-			this.server = new Server(port);
+			server = Server.getInstance();
+			server.startServer();
 		} 
 		catch (SocketException e) {
 			
 			e.printStackTrace();
 			System.out.println("SocketException in creating the instance of server! Exiting...");
 			System.exit(0);
+		} 
+		catch (UnknownHostException e) {
+			
+			e.printStackTrace();
 		}
 		
 		threadService = new Thread(this,"StartServer");
@@ -84,7 +94,8 @@ public class ServerService implements Runnable{
 				
 				while(isService) {
 					
-					DatagramPacket datagramPacket = new DataPacket().getDatagramPacket();
+					byte[] data = new byte[1024*60];
+					DatagramPacket datagramPacket = new DatagramPacket(data, data.length);
 					
 					try {
 						
@@ -106,6 +117,10 @@ public class ServerService implements Runnable{
 	
 	private void processReceivedDatagramPacket(DatagramPacket datagramPacket) {
 		
+		String received = new String(datagramPacket.getData(), 0, datagramPacket.getLength());
+		System.out.println(received);
+		System.out.println(datagramPacket.getAddress());
+		System.out.println(datagramPacket.getPort());
 		System.out.println(datagramPacket);
 		
 	}

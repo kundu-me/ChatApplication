@@ -15,19 +15,25 @@ public class Client implements Serializable{
 	 */
 	private static final long serialVersionUID = 1L;
 	
+	private String userName;
 	private String id;
 	private String name;
 	
 	private InetAddress inetAddress;
 	private int port;
 	
+	public Client(String userName) {
+		super();
+		this.userName = userName;
+	}
 	
-	public Client(String id, String name, InetAddress inetAddress, int port) {
+	public Client(String userName, String id, String name, InetAddress inetAddress, int port) {
 		super();
 		this.id = id;
 		this.name = name;
 		this.inetAddress = inetAddress;
 		this.port = port;
+		this.userName = userName;
 	}
 
 
@@ -71,8 +77,19 @@ public class Client implements Serializable{
 	}
 
 
+	public String getUserName() {
+		return userName;
+	}
+
+
+	public void setUserName(String userName) {
+		this.userName = userName;
+	}
+
 	@Override
 	public String toString() {
-		return "Client [id=" + id + ", name=" + name + ", inetAddress=" + inetAddress + ", port=" + port + "]";
+		return "Client [userName=" + userName + ", id=" + id + ", name=" + name + ", inetAddress=" + inetAddress
+				+ ", port=" + port + "]";
 	}
+	
 }

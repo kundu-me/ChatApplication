@@ -10,6 +10,10 @@ import com.google.gson.Gson;
 public class DataPacket {
 	
 	public static final String ACTION_TYPE_MESSAGE = "MESSAGE";
+	public static final String ACTION_TYPE_SIGNUP = "SIGNUP";
+	public static final String ACTION_TYPE_LOGIN = "LOGIN";
+	public static final String ACTION_TYPE_LOGOUT = "LOGOUT";
+	
 	public static final String MESSAGE_TYPE_MESSAGE = "MESSAGE";
 	
 	private String action;
@@ -20,6 +24,9 @@ public class DataPacket {
 	private Client toClient;
 	
 	private String message;
+	
+	private String userName;
+	private String password;
 
 	public DataPacket(String action) {
 		super();
@@ -72,5 +79,31 @@ public class DataPacket {
 		String strJSON = gson.toJson(this);
 		return strJSON;
 	}
+
+	public String getUserName() {
+		return userName;
+	}
+
+	public void setUserName(String userName) {
+		this.userName = userName;
+	}
+
+	public String getPassword() {
+		return password;
+	}
+
+	public void setPassword(String password) {
+		this.password = password;
+	}
+
+	@Override
+	public String toString() {
+		return "DataPacket [action=" + action + ", messageType=" + messageType + ", fromClient=" + fromClient
+				+ ", toClient=" + toClient + ", message=" + message + ", userName=" + userName + ", password="
+				+ password + "]";
+	}
+	
+	
+	
 
 }

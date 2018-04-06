@@ -12,60 +12,62 @@ import java.net.UnknownHostException;
  *
  */
 public class Server implements Serializable{
-	
+
 	/**
 	 * 
 	 */
 	private static final long serialVersionUID = 1L;
-	
+
 	private DatagramSocket datagramSocket;
 	private int port;
-	
+
 	private String hostName;
 	private InetAddress inetAddress;
-	
+
 	public static Server server;
-	
+
 	private Server() throws UnknownHostException {
 		super();
-		
+
 		this.hostName = "localhost";
 		this.inetAddress = InetAddress.getByName(this.hostName);
 		this.port = 8005;
-		
+
 	}
-	
+
 	public static Server getInstance() throws UnknownHostException {
-		
+
 		if(server == null) {
 			server = new Server();
 		}
-		
+
 		return server;
 	}
-	
+
 	public void startServer() throws SocketException {
-		
+
 		this.datagramSocket = new DatagramSocket(this.port);
 	}
-	
+
 	public void connectToServer() throws SocketException {
-		
-		this.datagramSocket = new DatagramSocket();
+
+		if(this.datagramSocket == null) {
+			this.datagramSocket = new DatagramSocket();
+		}
 	}
-	
+
 	public DatagramSocket getDatagramSocket() {
 		return datagramSocket;
 	}
-	
+
 	public void setDatagramSocket(DatagramSocket datagramSocket) {
 		this.datagramSocket = datagramSocket;
 	}
-	
+
 	public int getPort() {
 		return port;
 	}
-	
+
 	public void setPort(int port) {
 		this.port = port;
 	}
@@ -85,11 +87,4 @@ public class Server implements Serializable{
 	public void setInetAddress(InetAddress inetAddress) {
 		this.inetAddress = inetAddress;
 	}
-
-	@Override
-	public String toString() {
-		return "Server [datagramSocket=" + datagramSocket + ", port=" + port + ", hostName=" + hostName
-				+ ", inetAddress=" + inetAddress + "]";
-	}
-
 }

@@ -1,5 +1,9 @@
 package com.nxkundu.server.bo;
 
+import java.io.Serializable;
+import java.util.Date;
+import java.util.UUID;
+
 import com.google.gson.Gson;
 
 /**
@@ -7,14 +11,24 @@ import com.google.gson.Gson;
  * @author nxkundu
  *
  */
-public class DataPacket {
+public class DataPacket implements Serializable{
+	
+	/**
+	 * 
+	 */
+	private static final long serialVersionUID = 1L;
 	
 	public static final String ACTION_TYPE_MESSAGE = "MESSAGE";
 	public static final String ACTION_TYPE_SIGNUP = "SIGNUP";
 	public static final String ACTION_TYPE_LOGIN = "LOGIN";
 	public static final String ACTION_TYPE_LOGOUT = "LOGOUT";
+	public static final String ACTION_TYPE_ONLINE = "ONLINE";
 	
 	public static final String MESSAGE_TYPE_MESSAGE = "MESSAGE";
+	public static final String MESSAGE_TYPE_MULTICAST_MESSAGE = "MULTICAST_MESSAGE";
+	public static final String MESSAGE_TYPE_BROADCAST_MESSAGE = "BROADCAST_MESSAGE";
+	
+	private UUID id;
 	
 	private String action;
 	
@@ -25,14 +39,26 @@ public class DataPacket {
 	
 	private String message;
 	
-	private String userName;
-	private String password;
+	private long timestamp;
+	private boolean isACK;
 
 	public DataPacket(String action) {
 		super();
 		this.action = action;
+		this.setId(UUID.randomUUID());
+		this.setACK(false);
+		this.setTimestamp(new Date().getTime());
 	}
-
+	
+	public DataPacket(Client fromClient, String action) {
+		super();
+		this.action = action;
+		this.setId(UUID.randomUUID());
+		this.setACK(false);
+		this.setTimestamp(new Date().getTime());
+		this.fromClient = fromClient;
+	}
+	
 	public String getAction() {
 		return action;
 	}
@@ -80,30 +106,37 @@ public class DataPacket {
 		return strJSON;
 	}
 
-	public String getUserName() {
-		return userName;
+	public UUID getId() {
+		return id;
 	}
 
-	public void setUserName(String userName) {
-		this.userName = userName;
+	public void setId(UUID id) {
+		this.id = id;
 	}
 
-	public String getPassword() {
-		return password;
+	public boolean isACK() {
+		return isACK;
 	}
 
-	public void setPassword(String password) {
-		this.password = password;
+	public void setACK(boolean isACK) {
+		this.isACK = isACK;
+	}
+
+	public long getTimestamp() {
+		return timestamp;
+	}
+
+	public void setTimestamp(long timestamp) {
+		this.timestamp = timestamp;
 	}
 
 	@Override
 	public String toString() {
-		return "DataPacket [action=" + action + ", messageType=" + messageType + ", fromClient=" + fromClient
-				+ ", toClient=" + toClient + ", message=" + message + ", userName=" + userName + ", password="
-				+ password + "]";
+		return "DataPacket [id=" + id + ", action=" + action + ", messageType=" + messageType + ", fromClient="
+				+ fromClient + ", toClient=" + toClient + ", message=" + message + ", timestamp=" + timestamp
+				+ ", isACK=" + isACK + "]";
 	}
-	
-	
-	
 
+	
+	
 }

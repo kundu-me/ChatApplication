@@ -5,8 +5,7 @@ import java.net.DatagramPacket;
 import java.net.InetAddress;
 import java.net.SocketException;
 import java.net.UnknownHostException;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.Date;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ConcurrentMap;
@@ -30,8 +29,6 @@ public class ServerService implements Runnable{
 	private Thread threadSend;
 	private Thread threadReceive;
 
-	private ConcurrentMap<String, Client> mapOnClients;
-	private ConcurrentMap<String, Client> mapOffClients;
 	private ConcurrentMap<String, Client> mapAllClients;
 
 	private ConcurrentLinkedQueue<DataPacket> qSendPacket;
@@ -40,10 +37,8 @@ public class ServerService implements Runnable{
 
 		isService = false;
 
-		mapOnClients = new ConcurrentHashMap<>();
-		mapOffClients = new ConcurrentHashMap<>();
 		mapAllClients = new ConcurrentHashMap<>();
-
+		
 		qSendPacket = new ConcurrentLinkedQueue<>();
 	}
 
@@ -100,11 +95,21 @@ public class ServerService implements Runnable{
 						if(!qSendPacket.isEmpty()) {
 
 							DataPacket dataPacket = qSendPacket.poll();
-							byte[] data = dataPacket.toJSON().getBytes();
-							DatagramPacket datagramPacket = new DatagramPacket(data, data.length, 
-									dataPacket.getToClient().getInetAddress(), dataPacket.getToClient().getPort());
+							
+							if((mapAllClients.containsKey(dataPacket.getToClient().getUserName()))
+									&& (mapAllClients.get(dataPacket.getToClient().getUserName())).isOnline()) {
+								
+								byte[] data = dataPacket.toJSON().getBytes();
+								DatagramPacket datagramPacket = new DatagramPacket(data, data.length, 
+										dataPacket.getToClient().getInetAddress(), dataPacket.getToClient().getPort());
 
-							server.getDatagramSocket().send(datagramPacket);
+								server.getDatagramSocket().send(datagramPacket);
+							}
+							else {
+								
+								//TODO
+								//write to DB
+							}
 
 						}
 					} 
@@ -151,14 +156,14 @@ public class ServerService implements Runnable{
 					}
 
 					processReceivedDatagramPacket(datagramPacket);
-				
+
 
 					try {
-	
+
 						Thread.sleep(100);
 					}
 					catch(Exception e) {
-	
+
 						e.printStackTrace();
 					}
 				}
@@ -178,12 +183,12 @@ public class ServerService implements Runnable{
 		InetAddress inetAddress = datagramPacket.getAddress();
 		int port = datagramPacket.getPort();
 
-		String userName = dataPacket.getUserName();
+		String userName = dataPacket.getFromClient().getUserName();
 		String id = "";
 		String name = "";
 
 		Client fromClient = new Client(userName, id, name, inetAddress, port);
-		
+
 		switch(dataPacket.getAction()) {
 
 		case DataPacket.ACTION_TYPE_LOGIN:
@@ -195,19 +200,49 @@ public class ServerService implements Runnable{
 
 			updateClientOff(fromClient);
 			break;
+			
+		case DataPacket.ACTION_TYPE_ONLINE:
+
+			fromClient.setLastSeenTimestamp(new Date().getTime());
+			mapAllClients.put(fromClient.getUserName(), fromClient);
+			break;
 
 		case DataPacket.ACTION_TYPE_MESSAGE:
 
 			dataPacket.setFromClient(fromClient);
 
-			if(mapOnClients.containsKey((dataPacket.getToClient().getUserName()))) {
-				
+			switch (dataPacket.getMessageType()) {
 
-				Client toClient = mapOnClients.get(dataPacket.getToClient().getUserName());
-				dataPacket.setToClient(toClient);
-				qSendPacket.add(dataPacket);
+			case DataPacket.MESSAGE_TYPE_MESSAGE:
 
+				if(mapAllClients.containsKey((dataPacket.getToClient().getUserName()))) {
+
+
+					Client toClient = mapAllClients.get(dataPacket.getToClient().getUserName());
+					dataPacket.setToClient(toClient);
+					qSendPacket.add(dataPacket);
+
+				}
+				break;
+
+			case DataPacket.MESSAGE_TYPE_BROADCAST_MESSAGE:
+
+				for(String key : mapAllClients.keySet()) {
+
+					Client toClient = mapAllClients.get(key);
+					if(toClient.getUserName().equalsIgnoreCase(fromClient.getUserName())) {
+						continue;
+					}
+					DataPacket dataPacketBroadCast = new Gson().fromJson(received, DataPacket.class);
+					dataPacketBroadCast.setFromClient(fromClient);
+					dataPacketBroadCast.setToClient(toClient);
+					qSendPacket.add(dataPacketBroadCast);
+				}
+
+				break;
 			}
+
+			break;
 		}
 
 	}
@@ -216,17 +251,13 @@ public class ServerService implements Runnable{
 
 		System.out.println("Client Logged In : " + client.toString());
 
-		mapOnClients.put(client.getUserName(), client);
-
-		mapOffClients.remove(client.getUserName());
+		mapAllClients.put(client.getUserName(), client);
+		System.out.println("Online Clients: " + mapAllClients);
 	}
 
 	private void updateClientOff(Client client) {
 
 		System.out.println("Client Logged Out : " + client.toString());
-
-		mapOffClients.put(client.getUserName(), client);
-
-		mapOnClients.remove(client.getUserName());
+		//TODO handle 
 	}
 }

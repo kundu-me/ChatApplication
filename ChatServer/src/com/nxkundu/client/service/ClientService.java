@@ -20,16 +20,19 @@ import com.nxkundu.server.bo.Server;
 public class ClientService implements Runnable{
 
 	private Server server;
+	private Client client;
 
 	private Thread threadService;
 	private boolean isLoggedIn;
 
 	private Thread threadReceive;
 	private Thread threadProcessReceivedData;
+	private Thread threadOnlineStatus;
 
 	private ConcurrentLinkedQueue<DatagramPacket> qReceivedPacket;
 
 	public ClientService() {
+
 		super();
 
 		isLoggedIn = false;
@@ -50,12 +53,15 @@ public class ClientService implements Runnable{
 
 			e.printStackTrace();
 		}
+
 	}
 
 	@Override
 	public void run() {
 
 		recievePacket();
+		
+		sendPacketOnlineStatus();
 
 		processReceivedDatagramPacket();
 
@@ -65,8 +71,8 @@ public class ClientService implements Runnable{
 
 		try {
 
-			DataPacket dataPacket = new DataPacket(DataPacket.ACTION_TYPE_LOGIN);
-			dataPacket.setUserName(userName);
+			client = new Client(userName);
+			DataPacket dataPacket = new DataPacket(client, DataPacket.ACTION_TYPE_LOGIN);
 
 			byte[] data = dataPacket.toJSON().getBytes();
 			DatagramPacket datagramPacket = new DatagramPacket(data, data.length, server.getInetAddress(), server.getPort());
@@ -83,12 +89,11 @@ public class ClientService implements Runnable{
 		threadService.start();
 	}
 
-	public void logout(String userName) {
+	public void logout() {
 
 		try {
 
-			DataPacket dataPacket = new DataPacket(DataPacket.ACTION_TYPE_LOGOUT);
-			dataPacket.setUserName(userName);
+			DataPacket dataPacket = new DataPacket(client, DataPacket.ACTION_TYPE_LOGOUT);
 
 			byte[] data = dataPacket.toJSON().getBytes();
 			DatagramPacket datagramPacket = new DatagramPacket(data, data.length, server.getInetAddress(), server.getPort());
@@ -100,23 +105,38 @@ public class ClientService implements Runnable{
 			e.printStackTrace();
 		}
 
-		isLoggedIn = true;
+		isLoggedIn = false;
 	}
 
-	public void sendPacket(String toClientUserName) {
+	public void sendPacket(String messageType, String message, String toClientUserName) {
 
 		try {
 
-			DataPacket dataPacket = new DataPacket(DataPacket.ACTION_TYPE_MESSAGE);
-			dataPacket.setMessageType(DataPacket.MESSAGE_TYPE_MESSAGE);
-			dataPacket.setMessage(new Date().toString());
+			DataPacket dataPacket = new DataPacket(client, DataPacket.ACTION_TYPE_MESSAGE);
+			dataPacket.setMessage(message);
+			
+			boolean isValid = false;
+			if(DataPacket.MESSAGE_TYPE_MESSAGE.equalsIgnoreCase(messageType)) {
+				
+				dataPacket.setMessageType(DataPacket.MESSAGE_TYPE_MESSAGE);
+				Client toClient = new Client(toClientUserName);
+				dataPacket.setToClient(toClient);
+				
+				isValid = true;
+			}
+			else if(DataPacket.MESSAGE_TYPE_BROADCAST_MESSAGE.equalsIgnoreCase(messageType)) {
+				
+				dataPacket.setMessageType(DataPacket.MESSAGE_TYPE_BROADCAST_MESSAGE);
+				isValid = true;
+			}
+			
 
-			Client toClient = new Client(toClientUserName);
-			dataPacket.setToClient(toClient);
-
-			byte[] data = dataPacket.toJSON().getBytes();
-			DatagramPacket datagramPacket = new DatagramPacket(data, data.length, server.getInetAddress(), server.getPort());
-			server.getDatagramSocket().send(datagramPacket);
+			if(isValid) {
+				
+				byte[] data = dataPacket.toJSON().getBytes();
+				DatagramPacket datagramPacket = new DatagramPacket(data, data.length, server.getInetAddress(), server.getPort());
+				server.getDatagramSocket().send(datagramPacket);
+			}
 
 		} 
 		catch (IOException e) {
@@ -135,7 +155,6 @@ public class ClientService implements Runnable{
 
 				while(isLoggedIn) {
 
-					System.out.println("recievePacket");
 					byte[] data = new byte[1024*60];
 					DatagramPacket datagramPacket = new DatagramPacket(data, data.length);
 
@@ -149,7 +168,7 @@ public class ClientService implements Runnable{
 
 						e.printStackTrace();
 					}
-					
+
 					try {
 
 						Thread.sleep(100);
@@ -180,14 +199,15 @@ public class ClientService implements Runnable{
 						String received = new String(datagramPacket.getData(), 0, datagramPacket.getLength());
 						DataPacket dataPacket = new Gson().fromJson(received, DataPacket.class);
 						System.out.println(dataPacket);
+						System.out.println(dataPacket.getFromClient().getUserName() + " => " + dataPacket.getMessage());
 					}
-				
+
 					try {
-	
+
 						Thread.sleep(100);
 					}
 					catch(Exception e) {
-	
+
 						e.printStackTrace();
 					}
 				}
@@ -195,6 +215,44 @@ public class ClientService implements Runnable{
 		};
 
 		threadProcessReceivedData.start();
+	}
+
+	private void sendPacketOnlineStatus() {
+
+		threadOnlineStatus = new Thread("SendOnlineStatus"){
+
+			@Override
+			public void run() {
+
+				while(isLoggedIn) {
+					
+					try {
+
+						DataPacket dataPacket = new DataPacket(client, DataPacket.ACTION_TYPE_ONLINE);
+
+						byte[] data = dataPacket.toJSON().getBytes();
+						DatagramPacket datagramPacket = new DatagramPacket(data, data.length, server.getInetAddress(), server.getPort());
+						server.getDatagramSocket().send(datagramPacket);
+
+					} 
+					catch (IOException e) {
+
+						e.printStackTrace();
+					}
+
+					try {
+
+						Thread.sleep(5000);
+					}
+					catch(Exception e) {
+
+						e.printStackTrace();
+					}
+				}
+			}
+		};
+
+		threadOnlineStatus.start();
 	}
 
 }

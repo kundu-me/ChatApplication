@@ -15,6 +15,7 @@ import java.util.Map;
 import javax.swing.DefaultListModel;
 import java.util.Set;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.ConcurrentMap;
 
 /**
  *
@@ -451,46 +452,41 @@ public class ChatScreen extends javax.swing.JFrame implements Runnable{
     
     private void updateFriendList() {
         
-        Set<String> setOnClients = clientService.getSetOnClients();
-        Set<String> setOffClients = clientService.getSetOffClients();
-
-        if(setOnClients != null && !setOnClients.isEmpty()) {
+        ConcurrentMap<String, Client> mapAllClients = clientService.getMapAllClients();
+       
+        if(mapAllClients != null && !mapAllClients.isEmpty()) {
             
-            for(String userName : setOnClients) {
-                
-                if(!client.getUserName().equals(userName) ) {
+            mapAllClients.remove(client.getUserName());
+            
+            for(String userName : mapAllClients.keySet()) {
+                    
+                if(mapAllClients.get(userName).isOnline()) {
+
+                    modelOfflineFriends.removeElement(userName);
                     
                     if(!modelOnlineFriends.contains(userName)) {
                         
                         modelOnlineFriends.addElement(userName);
                     }
-                    modelOfflineFriends.removeElement(userName);
                 }
-
-                if(!mapModelChatHistory.containsKey(userName)) {
-                    DefaultListModel<String> model = new DefaultListModel<>();
-                    mapModelChatHistory.put(userName, model);
-                }
-            }
-            listOnlineFriends.setModel(modelOnlineFriends);
-        }
-
-        if(setOffClients != null && !setOffClients.isEmpty()) {
-            
-            for(String userName : setOffClients) {
-              
-                if(!modelOfflineFriends.contains(userName)) {
-                        
-                    modelOfflineFriends.addElement(userName);
-                }
-                modelOnlineFriends.removeElement(userName);
                 
-              
+                if(!mapAllClients.get(userName).isOnline()) {
+
+                    modelOnlineFriends.removeElement(userName);
+                    
+                    if(!modelOfflineFriends.contains(userName)) {
+                        
+                        modelOfflineFriends.addElement(userName);
+                    }
+                }
+                
                 if(!mapModelChatHistory.containsKey(userName)) {
                     DefaultListModel<String> model = new DefaultListModel<>();
                     mapModelChatHistory.put(userName, model);
                 }
             }
+            
+            listOnlineFriends.setModel(modelOnlineFriends);
             listOfflineFriends.setModel(modelOfflineFriends);
         }
         

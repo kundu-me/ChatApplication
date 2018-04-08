@@ -106,7 +106,7 @@ public class Client implements Serializable{
 	public boolean isOnline() {
 		long dt = new Date().getTime();
 		
-		if(dt - lastSeenTimestamp <= 5000) {
+		if(dt - lastSeenTimestamp <= 9999) {
 			return true;
 		}
 		return false;
@@ -137,7 +137,7 @@ public class Client implements Serializable{
 		else if(diffMinutes > 1) {
 			lastSeen = diffMinutes + " minutes ago";
 		}
-		else if(diffSeconds > 6) {
+		else if(diffSeconds > 10) {
 			lastSeen = diffMinutes + " seconds ago";
 		}
 		

@@ -205,12 +205,15 @@ public class ServerService implements Runnable{
 			mapAllClients.put(fromClient.getUserName(), fromClient);
 			
 			updateClientOn(fromClient);
-			sendClientStatus(false, fromClient);
+			//sendClientStatus(false, fromClient);
+			sendClientStatus(true, fromClient);
 			break;
 
 		case DataPacket.ACTION_TYPE_LOGOUT:
 
 			updateClientOff(fromClient);
+			//sendClientStatus(false, fromClient);
+			sendClientStatus(true, fromClient);
 			break;
 
 		case DataPacket.ACTION_TYPE_ONLINE:

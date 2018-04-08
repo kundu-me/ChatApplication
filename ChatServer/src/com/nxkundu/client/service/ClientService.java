@@ -9,7 +9,6 @@ import java.util.HashMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.ConcurrentSkipListSet;
 
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
@@ -34,8 +33,6 @@ public class ClientService implements Runnable{
 	private Thread threadOnlineStatus;
 
 	private ConcurrentMap<String, Client> mapAllClients;
-	private ConcurrentSkipListSet<String> setOnClients;
-	private ConcurrentSkipListSet<String> setOffClients;
 	private ConcurrentMap<String, ConcurrentLinkedQueue<DataPacket>> mapClientSendReceiveDataPacket;
 	
 	
@@ -112,22 +109,6 @@ public class ClientService implements Runnable{
 		this.mapAllClients = mapAllClients;
 	}
 
-	public ConcurrentSkipListSet<String> getSetOnClients() {
-		return setOnClients;
-	}
-
-	public void setSetOnClients(ConcurrentSkipListSet<String> setOnClients) {
-		this.setOnClients = setOnClients;
-	}
-
-	public ConcurrentSkipListSet<String> getSetOffClients() {
-		return setOffClients;
-	}
-
-	public void setSetOffClients(ConcurrentSkipListSet<String> setOffClients) {
-		this.setOffClients = setOffClients;
-	}
-
 	private static ClientService clientService;
 
 	private ClientService() {
@@ -136,8 +117,6 @@ public class ClientService implements Runnable{
 
 		isLoggedIn = false;
 
-		setOnClients = new ConcurrentSkipListSet<>();
-		setOffClients = new ConcurrentSkipListSet<>();
 		mapClientSendReceiveDataPacket = new ConcurrentHashMap<>();
 
 		try {
@@ -266,6 +245,7 @@ public class ClientService implements Runnable{
 		}
 		
 		qClientSendReceive.add(dataPacket);
+		mapClientSendReceiveDataPacket.put(dataPacket.getFromClient().getUserName(), qClientSendReceive);
 		
 	}
 
@@ -319,29 +299,6 @@ public class ClientService implements Runnable{
 
 			Type type = new TypeToken<HashMap<String, Client>>(){}.getType();
 			mapAllClients =  new ConcurrentHashMap<>(new Gson().fromJson(dataPacket.getMessage(), type));
-			
-			for(String userName : mapAllClients.keySet()) {
-				
-				if(!mapClientSendReceiveDataPacket.containsKey(userName)) {
-					
-					ConcurrentLinkedQueue<DataPacket> qSendReceiveDataPacket = new ConcurrentLinkedQueue<>();
-					mapClientSendReceiveDataPacket.put(userName, qSendReceiveDataPacket);
-				}
-				
-				if(mapAllClients.get(userName).isOnline()) {
-					
-					setOnClients.add(userName);
-					setOffClients.remove(userName);
-				}
-				else {
-					
-					setOnClients.remove(userName);
-					setOffClients.add(userName);
-				}
-			}
-			
-			System.out.println("OnClient :=> " + setOnClients);
-			System.out.println("OffClient :=> " + setOffClients);
 			
 			break;
 

@@ -1,13 +1,18 @@
 package com.nxkundu.client.service;
 
 import java.io.IOException;
+import java.lang.reflect.Type;
 import java.net.DatagramPacket;
 import java.net.SocketException;
 import java.net.UnknownHostException;
-import java.util.Date;
+import java.util.HashMap;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.ConcurrentSkipListSet;
 
 import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
 import com.nxkundu.server.bo.Client;
 import com.nxkundu.server.bo.DataPacket;
 import com.nxkundu.server.bo.Server;
@@ -26,18 +31,114 @@ public class ClientService implements Runnable{
 	private boolean isLoggedIn;
 
 	private Thread threadReceive;
-	private Thread threadProcessReceivedData;
 	private Thread threadOnlineStatus;
 
-	private ConcurrentLinkedQueue<DatagramPacket> qReceivedPacket;
+	private ConcurrentMap<String, Client> mapAllClients;
+	private ConcurrentSkipListSet<String> setOnClients;
+	private ConcurrentSkipListSet<String> setOffClients;
+	private ConcurrentMap<String, ConcurrentLinkedQueue<DataPacket>> mapClientSendReceiveDataPacket;
+	
+	
+	public ConcurrentMap<String, ConcurrentLinkedQueue<DataPacket>> getMapClientSendReceiveDataPacket() {
+		return mapClientSendReceiveDataPacket;
+	}
 
-	public ClientService() {
+	public void setMapClientSendReceiveDataPacket(
+			ConcurrentMap<String, ConcurrentLinkedQueue<DataPacket>> mapClientSendReceiveDataPacket) {
+		this.mapClientSendReceiveDataPacket = mapClientSendReceiveDataPacket;
+	}
+
+	public Server getServer() {
+		return server;
+	}
+
+	public void setServer(Server server) {
+		this.server = server;
+	}
+
+	public Client getClient() {
+		return client;
+	}
+
+	public void setClient(Client client) {
+		this.client = client;
+	}
+
+	public Thread getThreadService() {
+		return threadService;
+	}
+
+	public void setThreadService(Thread threadService) {
+		this.threadService = threadService;
+	}
+
+	public boolean isLoggedIn() {
+		return isLoggedIn;
+	}
+
+	public void setLoggedIn(boolean isLoggedIn) {
+		this.isLoggedIn = isLoggedIn;
+	}
+
+	public Thread getThreadReceive() {
+		return threadReceive;
+	}
+
+	public void setThreadReceive(Thread threadReceive) {
+		this.threadReceive = threadReceive;
+	}
+
+	public Thread getThreadOnlineStatus() {
+		return threadOnlineStatus;
+	}
+
+	public void setThreadOnlineStatus(Thread threadOnlineStatus) {
+		this.threadOnlineStatus = threadOnlineStatus;
+	}
+
+	public static ClientService getClientService() {
+		return clientService;
+	}
+
+	public static void setClientService(ClientService clientService) {
+		ClientService.clientService = clientService;
+	}
+
+	public ConcurrentMap<String, Client> getMapAllClients() {
+		return mapAllClients;
+	}
+
+	public void setMapAllClients(ConcurrentMap<String, Client> mapAllClients) {
+		this.mapAllClients = mapAllClients;
+	}
+
+	public ConcurrentSkipListSet<String> getSetOnClients() {
+		return setOnClients;
+	}
+
+	public void setSetOnClients(ConcurrentSkipListSet<String> setOnClients) {
+		this.setOnClients = setOnClients;
+	}
+
+	public ConcurrentSkipListSet<String> getSetOffClients() {
+		return setOffClients;
+	}
+
+	public void setSetOffClients(ConcurrentSkipListSet<String> setOffClients) {
+		this.setOffClients = setOffClients;
+	}
+
+	private static ClientService clientService;
+
+	private ClientService() {
 
 		super();
 
 		isLoggedIn = false;
 
-		qReceivedPacket = new ConcurrentLinkedQueue<>();
+		setOnClients = new ConcurrentSkipListSet<>();
+		setOffClients = new ConcurrentSkipListSet<>();
+		mapClientSendReceiveDataPacket = new ConcurrentHashMap<>();
 
 		try {
 
@@ -55,6 +156,14 @@ public class ClientService implements Runnable{
 		}
 
 	}
+	
+	public static ClientService getInstance() {
+		
+		if(clientService == null) {
+			clientService = new ClientService();
+		}
+		return clientService;
+	}
 
 	@Override
 	public void run() {
@@ -62,8 +171,6 @@ public class ClientService implements Runnable{
 		recievePacket();
 		
 		sendPacketOnlineStatus();
-
-		processReceivedDatagramPacket();
 
 	}
 
@@ -133,6 +240,8 @@ public class ClientService implements Runnable{
 
 			if(isValid) {
 				
+				//addClientSendReceiveDataPacket(dataPacket);
+				
 				byte[] data = dataPacket.toJSON().getBytes();
 				DatagramPacket datagramPacket = new DatagramPacket(data, data.length, server.getInetAddress(), server.getPort());
 				server.getDatagramSocket().send(datagramPacket);
@@ -144,6 +253,20 @@ public class ClientService implements Runnable{
 			e.printStackTrace();
 		}
 
+	}
+
+	private void addClientSendReceiveDataPacket(DataPacket dataPacket) {
+		
+		ConcurrentLinkedQueue<DataPacket> qClientSendReceive = null;
+		if(mapClientSendReceiveDataPacket.containsKey(dataPacket.getFromClient().getUserName())) {
+			qClientSendReceive = mapClientSendReceiveDataPacket.get(dataPacket.getFromClient().getUserName());
+		}
+		else {
+			qClientSendReceive = new ConcurrentLinkedQueue<>();
+		}
+		
+		qClientSendReceive.add(dataPacket);
+		
 	}
 
 	public void recievePacket() {
@@ -161,7 +284,7 @@ public class ClientService implements Runnable{
 					try {
 
 						server.getDatagramSocket().receive(datagramPacket);
-						qReceivedPacket.add(datagramPacket);
+						processReceivedDatagramPacket(datagramPacket);
 
 					} 
 					catch (IOException e) {
@@ -171,7 +294,7 @@ public class ClientService implements Runnable{
 
 					try {
 
-						Thread.sleep(100);
+						Thread.sleep(500);
 					}
 					catch(Exception e) {
 
@@ -184,37 +307,70 @@ public class ClientService implements Runnable{
 		threadReceive.start();
 	}
 
-	private void processReceivedDatagramPacket() {
+	
+	private void processReceivedDatagramPacket(DatagramPacket datagramPacket) {
+		
+		String received = new String(datagramPacket.getData(), 0, datagramPacket.getLength());
+		DataPacket dataPacket = new Gson().fromJson(received, DataPacket.class);
 
-		threadProcessReceivedData = new Thread("ProcessRecievePacket"){
+		switch(dataPacket.getAction()) {
 
-			@Override
-			public void run() {
+		case DataPacket.ACTION_TYPE_ONLINE:
 
-				while(isLoggedIn) {
-
-					if(!qReceivedPacket.isEmpty()) {
-
-						DatagramPacket datagramPacket = qReceivedPacket.poll();
-						String received = new String(datagramPacket.getData(), 0, datagramPacket.getLength());
-						DataPacket dataPacket = new Gson().fromJson(received, DataPacket.class);
-						System.out.println(dataPacket);
-						System.out.println(dataPacket.getFromClient().getUserName() + " => " + dataPacket.getMessage());
-					}
-
-					try {
-
-						Thread.sleep(100);
-					}
-					catch(Exception e) {
-
-						e.printStackTrace();
-					}
+			Type type = new TypeToken<HashMap<String, Client>>(){}.getType();
+			mapAllClients =  new ConcurrentHashMap<>(new Gson().fromJson(dataPacket.getMessage(), type));
+			
+			for(String userName : mapAllClients.keySet()) {
+				
+				if(!mapClientSendReceiveDataPacket.containsKey(userName)) {
+					
+					ConcurrentLinkedQueue<DataPacket> qSendReceiveDataPacket = new ConcurrentLinkedQueue<>();
+					mapClientSendReceiveDataPacket.put(userName, qSendReceiveDataPacket);
+				}
+				
+				if(mapAllClients.get(userName).isOnline()) {
+					
+					setOnClients.add(userName);
+					setOffClients.remove(userName);
+				}
+				else {
+					
+					setOnClients.remove(userName);
+					setOffClients.add(userName);
 				}
 			}
-		};
+			
+			System.out.println("OnClient :=> " + setOnClients);
+			System.out.println("OffClient :=> " + setOffClients);
+			
+			break;
 
-		threadProcessReceivedData.start();
+		case DataPacket.ACTION_TYPE_MESSAGE:
+
+			System.out.println(dataPacket.getFromClient().getUserName() + " => " + dataPacket.getMessage());
+			
+			switch (dataPacket.getMessageType()) {
+			
+			case DataPacket.MESSAGE_TYPE_MESSAGE:
+
+				addClientSendReceiveDataPacket(dataPacket);
+				break;
+				
+			case DataPacket.MESSAGE_TYPE_BROADCAST_MESSAGE:
+
+				addClientSendReceiveDataPacket(dataPacket);
+				break;
+			
+			case DataPacket.MESSAGE_TYPE_MULTICAST_MESSAGE:
+
+
+				break;
+				
+			}
+
+			break;
+		}
+
 	}
 
 	private void sendPacketOnlineStatus() {
@@ -242,7 +398,7 @@ public class ClientService implements Runnable{
 
 					try {
 
-						Thread.sleep(5000);
+						Thread.sleep(4000);
 					}
 					catch(Exception e) {
 

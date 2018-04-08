@@ -104,7 +104,6 @@ public class Client implements Serializable{
 	}
 
 	public boolean isOnline() {
-		
 		long dt = new Date().getTime();
 		
 		if(dt - lastSeenTimestamp <= 5000) {

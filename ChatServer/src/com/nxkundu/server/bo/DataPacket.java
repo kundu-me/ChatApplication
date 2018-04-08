@@ -24,7 +24,7 @@ public class DataPacket implements Serializable{
 	public static final String ACTION_TYPE_LOGOUT = "LOGOUT";
 	public static final String ACTION_TYPE_ONLINE = "ONLINE";
 	
-	public static final String MESSAGE_TYPE_MESSAGE = "MESSAGE";
+	public static final String MESSAGE_TYPE_MESSAGE = "SINGLE_MESSAGE";
 	public static final String MESSAGE_TYPE_MULTICAST_MESSAGE = "MULTICAST_MESSAGE";
 	public static final String MESSAGE_TYPE_BROADCAST_MESSAGE = "BROADCAST_MESSAGE";
 	

@@ -14,7 +14,7 @@ public class Main {
 	
 	public static void main(String[] args) {
 		
-		ClientService service = new ClientService();
+		ClientService service = ClientService.getInstance();
 		
 		System.out.println("Enter your username: ");
 		Scanner scanner = new Scanner(System.in);

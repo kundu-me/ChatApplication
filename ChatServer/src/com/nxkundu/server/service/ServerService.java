@@ -6,6 +6,8 @@ import java.net.InetAddress;
 import java.net.SocketException;
 import java.net.UnknownHostException;
 import java.util.Date;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ConcurrentMap;
@@ -28,6 +30,7 @@ public class ServerService implements Runnable{
 
 	private Thread threadSend;
 	private Thread threadReceive;
+	private Thread threadBroadcastClientStatus;
 
 	private ConcurrentMap<String, Client> mapAllClients;
 
@@ -38,7 +41,7 @@ public class ServerService implements Runnable{
 		isService = false;
 
 		mapAllClients = new ConcurrentHashMap<>();
-		
+
 		qSendPacket = new ConcurrentLinkedQueue<>();
 	}
 
@@ -78,6 +81,8 @@ public class ServerService implements Runnable{
 		recievePacket();
 
 		sendPacket();
+		
+		broadcastClientStatus();
 
 	}
 
@@ -95,10 +100,10 @@ public class ServerService implements Runnable{
 						if(!qSendPacket.isEmpty()) {
 
 							DataPacket dataPacket = qSendPacket.poll();
-							
+
 							if((mapAllClients.containsKey(dataPacket.getToClient().getUserName()))
 									&& (mapAllClients.get(dataPacket.getToClient().getUserName())).isOnline()) {
-								
+
 								byte[] data = dataPacket.toJSON().getBytes();
 								DatagramPacket datagramPacket = new DatagramPacket(data, data.length, 
 										dataPacket.getToClient().getInetAddress(), dataPacket.getToClient().getPort());
@@ -106,7 +111,7 @@ public class ServerService implements Runnable{
 								server.getDatagramSocket().send(datagramPacket);
 							}
 							else {
-								
+
 								//TODO
 								//write to DB
 							}
@@ -120,7 +125,7 @@ public class ServerService implements Runnable{
 
 					try {
 
-						Thread.sleep(100);
+						Thread.sleep(500);
 					}
 					catch(Exception e) {
 
@@ -160,7 +165,7 @@ public class ServerService implements Runnable{
 
 					try {
 
-						Thread.sleep(100);
+						Thread.sleep(500);
 					}
 					catch(Exception e) {
 
@@ -188,19 +193,26 @@ public class ServerService implements Runnable{
 		String name = "";
 
 		Client fromClient = new Client(userName, id, name, inetAddress, port);
+		
+		System.out.println(fromClient);
 
 		switch(dataPacket.getAction()) {
 
 		case DataPacket.ACTION_TYPE_LOGIN:
 
+			fromClient.setLastSeenTimestamp(new Date().getTime());
+			
+			mapAllClients.put(fromClient.getUserName(), fromClient);
+			
 			updateClientOn(fromClient);
+			sendClientStatus(false, fromClient);
 			break;
 
 		case DataPacket.ACTION_TYPE_LOGOUT:
 
 			updateClientOff(fromClient);
 			break;
-			
+
 		case DataPacket.ACTION_TYPE_ONLINE:
 
 			fromClient.setLastSeenTimestamp(new Date().getTime());
@@ -250,9 +262,7 @@ public class ServerService implements Runnable{
 	private void updateClientOn(Client client) {
 
 		System.out.println("Client Logged In : " + client.toString());
-
-		mapAllClients.put(client.getUserName(), client);
-		System.out.println("Online Clients: " + mapAllClients);
+		//TODO handle 
 	}
 
 	private void updateClientOff(Client client) {
@@ -260,4 +270,72 @@ public class ServerService implements Runnable{
 		System.out.println("Client Logged Out : " + client.toString());
 		//TODO handle 
 	}
+
+	public void sendClientStatus(boolean isSendToAllClient, Client specificClient) {
+		
+		try {
+
+			Client client = new Client("server@" + server.getPort() + "");
+			
+			Set<String> setAllClientEmail = null;
+			if(!isSendToAllClient) {
+				setAllClientEmail = new HashSet<>();
+				setAllClientEmail.add(specificClient.getUserName());
+			}
+			else {
+				setAllClientEmail = mapAllClients.keySet();
+			}
+			
+			for(String key : setAllClientEmail) {
+
+				Client toClient = mapAllClients.get(key);
+				
+				if(toClient.isOnline()) {
+					
+					DataPacket dataPacket = new DataPacket(client, DataPacket.ACTION_TYPE_ONLINE);
+					dataPacket.setToClient(toClient);
+
+					String allClientData = new Gson().toJson(mapAllClients);
+					dataPacket.setMessage(allClientData);
+
+					byte[] data = dataPacket.toJSON().getBytes();
+					DatagramPacket datagramPacket = new DatagramPacket(data, data.length, toClient.getInetAddress(), toClient.getPort());
+					server.getDatagramSocket().send(datagramPacket);
+				}
+			}
+		} 
+		catch (IOException e) {
+
+			e.printStackTrace();
+		}
+
+	}
+	
+	private void broadcastClientStatus() {
+
+		threadBroadcastClientStatus = new Thread("BroadcastClientStatus"){
+
+			@Override
+			public void run() {
+
+				while(isService) {
+
+					Client client = new Client("server@server.com");
+					sendClientStatus(true, client);
+
+					try {
+
+						Thread.sleep(5000);
+					}
+					catch(Exception e) {
+
+						e.printStackTrace();
+					}
+				}
+			}
+		};
+
+		threadBroadcastClientStatus.start();
+	}
+
 }

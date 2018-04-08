@@ -255,6 +255,19 @@ public class ServerService implements Runnable{
 				}
 
 				break;
+				
+			case DataPacket.MESSAGE_TYPE_IMAGE_MESSAGE:
+
+				if(mapAllClients.containsKey((dataPacket.getToClient().getUserName()))) {
+
+
+					Client toClient = mapAllClients.get(dataPacket.getToClient().getUserName());
+					dataPacket.setToClient(toClient);
+					qSendPacket.add(dataPacket);
+
+				}
+				
+				break;
 			}
 
 			break;

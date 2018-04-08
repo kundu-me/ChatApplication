@@ -1,6 +1,7 @@
 package com.nxkundu.server.bo;
 
 import java.io.Serializable;
+import java.util.Base64;
 import java.util.Date;
 import java.util.UUID;
 
@@ -27,6 +28,7 @@ public class DataPacket implements Serializable{
 	public static final String MESSAGE_TYPE_MESSAGE = "SINGLE_MESSAGE";
 	public static final String MESSAGE_TYPE_MULTICAST_MESSAGE = "MULTICAST_MESSAGE";
 	public static final String MESSAGE_TYPE_BROADCAST_MESSAGE = "BROADCAST_MESSAGE";
+	public static final String MESSAGE_TYPE_IMAGE_MESSAGE = "IMAGE_MESSAGE";
 	
 	private UUID id;
 	
@@ -38,6 +40,8 @@ public class DataPacket implements Serializable{
 	private Client toClient;
 	
 	private String message;
+	
+	private String stringImage;
 	
 	private long timestamp;
 	private boolean isACK;
@@ -135,6 +139,16 @@ public class DataPacket implements Serializable{
 		return "DataPacket [id=" + id + ", action=" + action + ", messageType=" + messageType + ", fromClient="
 				+ fromClient + ", toClient=" + toClient + ", message=" + message + ", timestamp=" + timestamp
 				+ ", isACK=" + isACK + "]";
+	}
+
+	public byte[] getByteImage() {
+		
+		return Base64.getDecoder().decode(stringImage);
+	}
+
+	public void setByteImage(byte[] byteImage) {
+		
+		this.stringImage = Base64.getEncoder().encodeToString(byteImage);
 	}
 
 	

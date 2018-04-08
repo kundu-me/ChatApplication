@@ -10,12 +10,15 @@ import com.nxkundu.server.bo.Client;
 import com.nxkundu.server.bo.DataPacket;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.awt.image.BufferedImage;
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 import javax.swing.DefaultListModel;
-import java.util.Set;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ConcurrentMap;
+import javax.imageio.ImageIO;
 
 /**
  *
@@ -34,7 +37,7 @@ public class ChatScreen extends javax.swing.JFrame implements Runnable{
     private Thread threadSendReceiveDataPacket;
     private Thread threadSendReceiveAllDataPacket;
     
-    private Map<String, DefaultListModel<String>> mapModelChatHistory;
+    private Map<String, DefaultListModel<DisplayData>> mapModelChatHistory;
     DefaultListModel<String> modelOnlineFriends = null;
     DefaultListModel<String> modelOfflineFriends = null;
     
@@ -62,6 +65,8 @@ public class ChatScreen extends javax.swing.JFrame implements Runnable{
                     String chatFriend = listOnlineFriends.getSelectedValue();
                     labelChatFriend.setText(chatFriend);
                     labelChatFriendStatus.setText("Online");
+                    
+                    listChatHistory.setCellRenderer(new JListRendered());
                     listChatHistory.setModel(mapModelChatHistory.get(chatFriend));
                 }
             }
@@ -77,6 +82,8 @@ public class ChatScreen extends javax.swing.JFrame implements Runnable{
                     labelChatFriend.setText(chatFriend);
                     
                     labelChatFriendStatus.setText((clientService.getMapAllClients().get(chatFriend)).lastSeen());
+                    
+                    listChatHistory.setCellRenderer(new JListRendered());
                     listChatHistory.setModel(mapModelChatHistory.get(chatFriend));
                 }
             }
@@ -84,8 +91,11 @@ public class ChatScreen extends javax.swing.JFrame implements Runnable{
         
         
         mapModelChatHistory = new HashMap<>();
-        DefaultListModel<String> modelBroadCastMessage = new DefaultListModel<>();
+        DefaultListModel<DisplayData> modelBroadCastMessage = new DefaultListModel<>();
+        
+        listChatHistory.setCellRenderer(new JListRendered());
         listChatHistory.setModel(modelBroadCastMessage);
+        
         mapModelChatHistory.put(DataPacket.MESSAGE_TYPE_BROADCAST_MESSAGE, modelBroadCastMessage);
         
         threadClientChatScreen = new Thread(this, "ClientChatScreenStart");
@@ -133,6 +143,7 @@ public class ChatScreen extends javax.swing.JFrame implements Runnable{
         jLabel5 = new javax.swing.JLabel();
         labelChatFriend = new javax.swing.JLabel();
         labelChatFriendStatus = new javax.swing.JLabel();
+        ButtonImage = new javax.swing.JButton();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
 
@@ -156,18 +167,18 @@ public class ChatScreen extends javax.swing.JFrame implements Runnable{
         jPanel1Layout.setHorizontalGroup(
             jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(jPanel1Layout.createSequentialGroup()
-                .addContainerGap()
+                .addGap(6, 6, 6)
                 .addComponent(jLabel1)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addComponent(LabelUser)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                 .addComponent(buttonLogout)
-                .addContainerGap())
+                .addGap(6, 6, 6))
         );
         jPanel1Layout.setVerticalGroup(
             jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(jPanel1Layout.createSequentialGroup()
-                .addGap(8, 8, 8)
+                .addGap(6, 6, 6)
                 .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(jLabel1)
                     .addComponent(buttonLogout, javax.swing.GroupLayout.DEFAULT_SIZE, 40, Short.MAX_VALUE)
@@ -258,7 +269,7 @@ public class ChatScreen extends javax.swing.JFrame implements Runnable{
                 .addComponent(jPanel4, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addGap(6, 6, 6)
                 .addComponent(jPanel5, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                .addGap(6, 6, 6))
+                .addContainerGap())
         );
 
         jPanel3.setBorder(javax.swing.BorderFactory.createTitledBorder(""));
@@ -287,6 +298,16 @@ public class ChatScreen extends javax.swing.JFrame implements Runnable{
 
         labelChatFriendStatus.setText("Online");
 
+        ButtonImage.setText("Image");
+        ButtonImage.setMaximumSize(new java.awt.Dimension(70, 29));
+        ButtonImage.setMinimumSize(new java.awt.Dimension(70, 29));
+        ButtonImage.setPreferredSize(new java.awt.Dimension(75, 29));
+        ButtonImage.addMouseListener(new java.awt.event.MouseAdapter() {
+            public void mouseClicked(java.awt.event.MouseEvent evt) {
+                ButtonImageMouseClicked(evt);
+            }
+        });
+
         javax.swing.GroupLayout jPanel3Layout = new javax.swing.GroupLayout(jPanel3);
         jPanel3.setLayout(jPanel3Layout);
         jPanel3Layout.setHorizontalGroup(
@@ -294,18 +315,20 @@ public class ChatScreen extends javax.swing.JFrame implements Runnable{
             .addGroup(jPanel3Layout.createSequentialGroup()
                 .addGap(6, 6, 6)
                 .addGroup(jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addGroup(jPanel3Layout.createSequentialGroup()
-                        .addComponent(txtMessage)
-                        .addGap(6, 6, 6)
-                        .addComponent(btnSend, javax.swing.GroupLayout.PREFERRED_SIZE, 69, javax.swing.GroupLayout.PREFERRED_SIZE))
                     .addComponent(jScrollPane3)
                     .addGroup(jPanel3Layout.createSequentialGroup()
                         .addComponent(jLabel5)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(labelChatFriend, javax.swing.GroupLayout.DEFAULT_SIZE, 338, Short.MAX_VALUE)
+                        .addComponent(labelChatFriend, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(labelChatFriendStatus)))
-                .addGap(6, 6, 6))
+                        .addComponent(labelChatFriendStatus))
+                    .addGroup(jPanel3Layout.createSequentialGroup()
+                        .addComponent(txtMessage, javax.swing.GroupLayout.PREFERRED_SIZE, 269, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                        .addComponent(btnSend, javax.swing.GroupLayout.PREFERRED_SIZE, 66, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                        .addComponent(ButtonImage, javax.swing.GroupLayout.PREFERRED_SIZE, 56, javax.swing.GroupLayout.PREFERRED_SIZE)))
+                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
         );
         jPanel3Layout.setVerticalGroup(
             jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -318,10 +341,11 @@ public class ChatScreen extends javax.swing.JFrame implements Runnable{
                 .addGap(6, 6, 6)
                 .addComponent(jScrollPane3, javax.swing.GroupLayout.PREFERRED_SIZE, 350, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addGap(10, 10, 10)
-                .addGroup(jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                .addGroup(jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
                     .addComponent(txtMessage)
+                    .addComponent(ButtonImage, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                     .addComponent(btnSend, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
-                .addGap(6, 6, 6))
+                .addContainerGap())
         );
 
         txtMessage.getAccessibleContext().setAccessibleName("ChatText");
@@ -334,12 +358,12 @@ public class ChatScreen extends javax.swing.JFrame implements Runnable{
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(layout.createSequentialGroup()
                 .addGap(10, 10, 10)
-                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
                     .addComponent(jPanel1, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                     .addGroup(layout.createSequentialGroup()
-                        .addComponent(jPanel2, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addGap(12, 12, 12)
-                        .addComponent(jPanel3, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)))
+                        .addComponent(jPanel2, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addComponent(jPanel3, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)))
                 .addGap(10, 10, 10))
         );
         layout.setVerticalGroup(
@@ -349,19 +373,13 @@ public class ChatScreen extends javax.swing.JFrame implements Runnable{
                 .addComponent(jPanel1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addComponent(jPanel2, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                    .addComponent(jPanel3, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                    .addComponent(jPanel3, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                    .addComponent(jPanel2, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
                 .addGap(10, 10, 10))
         );
 
         pack();
     }// </editor-fold>//GEN-END:initComponents
-
-    private void btnSendMouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_btnSendMouseClicked
-        // TODO add your handling code here:
-        
-        sendMessage();
-    }//GEN-LAST:event_btnSendMouseClicked
 
     private void sendMessage() {
         
@@ -371,16 +389,30 @@ public class ChatScreen extends javax.swing.JFrame implements Runnable{
         if(message.length() == 0) {
             return;
         }
-       
-        mapModelChatHistory.get(toClient).addElement("Me: " + message);
+        
+        mapModelChatHistory.get(toClient).addElement(new DisplayData("Me: " + message));
         txtMessage.setText("");
+       
         if(toClient.equals(DataPacket.MESSAGE_TYPE_BROADCAST_MESSAGE)) {
+            
             message = client.getUserName() +" [BroadcastMessage]: " + message;
             clientService.sendPacket(DataPacket.MESSAGE_TYPE_BROADCAST_MESSAGE, message, "");
         }
         else {
+            
             message = client.getUserName() +": " + message;
             clientService.sendPacket(DataPacket.MESSAGE_TYPE_MESSAGE, message, toClient);
+        }
+    }
+    
+    private void sendImage() {
+        
+        String message = txtMessage.getText();
+        String toClient = labelChatFriend.getText();
+        
+        if(!toClient.equals(DataPacket.MESSAGE_TYPE_IMAGE_MESSAGE)) {
+            
+            clientService.sendPacket(DataPacket.MESSAGE_TYPE_IMAGE_MESSAGE, "/Users/nxkundu/ACN_Project/icon1.jpg", toClient);
         }
     }
     
@@ -392,6 +424,12 @@ public class ChatScreen extends javax.swing.JFrame implements Runnable{
         this.setVisible(false);
     }//GEN-LAST:event_buttonLogoutMouseClicked
 
+    private void btnSendMouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_btnSendMouseClicked
+        // TODO add your handling code here:
+
+        sendMessage();
+    }//GEN-LAST:event_btnSendMouseClicked
+
     private void txtMessageKeyPressed(java.awt.event.KeyEvent evt) {//GEN-FIRST:event_txtMessageKeyPressed
         // TODO add your handling code here:
         if(evt.getKeyCode() == java.awt.event.KeyEvent.VK_ENTER) {
@@ -399,8 +437,15 @@ public class ChatScreen extends javax.swing.JFrame implements Runnable{
         }
     }//GEN-LAST:event_txtMessageKeyPressed
 
+    private void ButtonImageMouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_ButtonImageMouseClicked
+        // TODO add your handling code here:
+        
+        sendImage();
+    }//GEN-LAST:event_ButtonImageMouseClicked
+
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
+    private javax.swing.JButton ButtonImage;
     private javax.swing.JLabel LabelUser;
     private javax.swing.JButton btnSend;
     private javax.swing.JButton buttonLogout;
@@ -418,7 +463,7 @@ public class ChatScreen extends javax.swing.JFrame implements Runnable{
     private javax.swing.JScrollPane jScrollPane3;
     private javax.swing.JLabel labelChatFriend;
     private javax.swing.JLabel labelChatFriendStatus;
-    private javax.swing.JList<String> listChatHistory;
+    private javax.swing.JList<DisplayData> listChatHistory;
     private javax.swing.JList<String> listOfflineFriends;
     private javax.swing.JList<String> listOnlineFriends;
     private javax.swing.JTextField txtMessage;
@@ -481,7 +526,7 @@ public class ChatScreen extends javax.swing.JFrame implements Runnable{
                 }
                 
                 if(!mapModelChatHistory.containsKey(userName)) {
-                    DefaultListModel<String> model = new DefaultListModel<>();
+                    DefaultListModel<DisplayData> model = new DefaultListModel<>();
                     mapModelChatHistory.put(userName, model);
                 }
             }
@@ -526,11 +571,35 @@ public class ChatScreen extends javax.swing.JFrame implements Runnable{
 
                             DataPacket dataPacket = qDataPacket.poll();
 
-                            DefaultListModel<String> modelChatHistory = new DefaultListModel<>();
+                            DefaultListModel<DisplayData> modelChatHistory = new DefaultListModel<>();
                             if(mapModelChatHistory.containsKey(fromClient)) {
                                 modelChatHistory = mapModelChatHistory.get(fromClient);
                             }
-                            modelChatHistory.addElement(dataPacket.getMessage());
+                            
+                            switch(dataPacket.getMessageType()) {
+                                
+                                case DataPacket.MESSAGE_TYPE_MESSAGE:
+                                    modelChatHistory.addElement(new DisplayData(dataPacket.getMessage()));
+                                    break;
+                                    
+                                case DataPacket.MESSAGE_TYPE_BROADCAST_MESSAGE:
+                                    modelChatHistory.addElement(new DisplayData(dataPacket.getMessage()));
+                                    break;
+                                    
+                                case DataPacket.MESSAGE_TYPE_IMAGE_MESSAGE:
+                                    
+                                    BufferedImage bufferedImage = null;
+                                    try {
+                                        
+                                        bufferedImage = ImageIO.read(new ByteArrayInputStream(dataPacket.getByteImage()));
+                                    } 
+                                    catch (IOException e) {
+                                        
+                                        e.printStackTrace();
+                                    }
+                                    modelChatHistory.addElement(new DisplayData("Image", (dataPacket.getByteImage())));
+                                    break;
+                            }
                         }
                     }
                     
@@ -576,11 +645,11 @@ public class ChatScreen extends javax.swing.JFrame implements Runnable{
 
                             DataPacket dataPacket = qDataPacket.poll();
 
-                            DefaultListModel<String> modelChatHistory = new DefaultListModel<>();
+                            DefaultListModel<DisplayData> modelChatHistory = new DefaultListModel<>();
                             if(mapModelChatHistory.containsKey(fromClient)) {
                                 modelChatHistory = mapModelChatHistory.get(fromClient);
                             }
-                            modelChatHistory.addElement(dataPacket.getMessage());
+                            modelChatHistory.addElement(new DisplayData(dataPacket.getMessage()));
                         }
                     }
                     

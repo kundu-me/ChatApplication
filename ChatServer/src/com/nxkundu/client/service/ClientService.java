@@ -1,5 +1,8 @@
 package com.nxkundu.client.service;
 
+import java.awt.image.BufferedImage;
+import java.io.ByteArrayOutputStream;
+import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.Type;
 import java.net.DatagramPacket;
@@ -9,6 +12,8 @@ import java.util.HashMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ConcurrentMap;
+
+import javax.imageio.ImageIO;
 
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
@@ -34,8 +39,8 @@ public class ClientService implements Runnable{
 
 	private ConcurrentMap<String, Client> mapAllClients;
 	private ConcurrentMap<String, ConcurrentLinkedQueue<DataPacket>> mapClientSendReceiveDataPacket;
-	
-	
+
+
 	public ConcurrentMap<String, ConcurrentLinkedQueue<DataPacket>> getMapClientSendReceiveDataPacket() {
 		return mapClientSendReceiveDataPacket;
 	}
@@ -135,9 +140,9 @@ public class ClientService implements Runnable{
 		}
 
 	}
-	
+
 	public static ClientService getInstance() {
-		
+
 		if(clientService == null) {
 			clientService = new ClientService();
 		}
@@ -148,7 +153,7 @@ public class ClientService implements Runnable{
 	public void run() {
 
 		recievePacket();
-		
+
 		sendPacketOnlineStatus();
 
 	}
@@ -200,27 +205,43 @@ public class ClientService implements Runnable{
 
 			DataPacket dataPacket = new DataPacket(client, DataPacket.ACTION_TYPE_MESSAGE);
 			dataPacket.setMessage(message);
-			
+
 			boolean isValid = false;
 			if(DataPacket.MESSAGE_TYPE_MESSAGE.equalsIgnoreCase(messageType)) {
-				
+
 				dataPacket.setMessageType(DataPacket.MESSAGE_TYPE_MESSAGE);
 				Client toClient = new Client(toClientUserName);
 				dataPacket.setToClient(toClient);
-				
+
 				isValid = true;
 			}
 			else if(DataPacket.MESSAGE_TYPE_BROADCAST_MESSAGE.equalsIgnoreCase(messageType)) {
-				
+
 				dataPacket.setMessageType(DataPacket.MESSAGE_TYPE_BROADCAST_MESSAGE);
 				isValid = true;
 			}
-			
+			else if(DataPacket.MESSAGE_TYPE_IMAGE_MESSAGE.equalsIgnoreCase(messageType)) {
+
+				dataPacket.setMessageType(DataPacket.MESSAGE_TYPE_IMAGE_MESSAGE);
+				System.out.println(message);
+				System.out.println(new File(message).exists());
+				BufferedImage bufferedImage = ImageIO.read(new File(message));
+				ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();        
+				ImageIO.write(bufferedImage, "jpg", byteArrayOutputStream);
+				byteArrayOutputStream.flush();
+				dataPacket.setByteImage(byteArrayOutputStream.toByteArray());
+				
+				Client toClient = new Client(toClientUserName);
+				dataPacket.setToClient(toClient);
+
+				isValid = true;
+			}
+
 
 			if(isValid) {
-				
+
 				//addClientSendReceiveDataPacket(dataPacket);
-				
+
 				byte[] data = dataPacket.toJSON().getBytes();
 				DatagramPacket datagramPacket = new DatagramPacket(data, data.length, server.getInetAddress(), server.getPort());
 				server.getDatagramSocket().send(datagramPacket);
@@ -235,7 +256,7 @@ public class ClientService implements Runnable{
 	}
 
 	private void addClientSendReceiveDataPacket(DataPacket dataPacket) {
-		
+
 		ConcurrentLinkedQueue<DataPacket> qClientSendReceive = null;
 		if(mapClientSendReceiveDataPacket.containsKey(dataPacket.getFromClient().getUserName())) {
 			qClientSendReceive = mapClientSendReceiveDataPacket.get(dataPacket.getFromClient().getUserName());
@@ -243,10 +264,10 @@ public class ClientService implements Runnable{
 		else {
 			qClientSendReceive = new ConcurrentLinkedQueue<>();
 		}
-		
+
 		qClientSendReceive.add(dataPacket);
 		mapClientSendReceiveDataPacket.put(dataPacket.getFromClient().getUserName(), qClientSendReceive);
-		
+
 	}
 
 	public void recievePacket() {
@@ -287,9 +308,9 @@ public class ClientService implements Runnable{
 		threadReceive.start();
 	}
 
-	
+
 	private void processReceivedDatagramPacket(DatagramPacket datagramPacket) {
-		
+
 		String received = new String(datagramPacket.getData(), 0, datagramPacket.getLength());
 		DataPacket dataPacket = new Gson().fromJson(received, DataPacket.class);
 
@@ -299,30 +320,35 @@ public class ClientService implements Runnable{
 
 			Type type = new TypeToken<HashMap<String, Client>>(){}.getType();
 			mapAllClients =  new ConcurrentHashMap<>(new Gson().fromJson(dataPacket.getMessage(), type));
-			
+
 			break;
 
 		case DataPacket.ACTION_TYPE_MESSAGE:
 
 			System.out.println(dataPacket.getFromClient().getUserName() + " => " + dataPacket.getMessage());
-			
+
 			switch (dataPacket.getMessageType()) {
-			
+
 			case DataPacket.MESSAGE_TYPE_MESSAGE:
 
 				addClientSendReceiveDataPacket(dataPacket);
 				break;
-				
+
 			case DataPacket.MESSAGE_TYPE_BROADCAST_MESSAGE:
 
 				addClientSendReceiveDataPacket(dataPacket);
 				break;
-			
+				
+			case DataPacket.MESSAGE_TYPE_IMAGE_MESSAGE:
+
+				addClientSendReceiveDataPacket(dataPacket);
+				break;
+
 			case DataPacket.MESSAGE_TYPE_MULTICAST_MESSAGE:
 
 
 				break;
-				
+
 			}
 
 			break;
@@ -338,7 +364,7 @@ public class ClientService implements Runnable{
 			public void run() {
 
 				while(isLoggedIn) {
-					
+
 					try {
 
 						DataPacket dataPacket = new DataPacket(client, DataPacket.ACTION_TYPE_ONLINE);

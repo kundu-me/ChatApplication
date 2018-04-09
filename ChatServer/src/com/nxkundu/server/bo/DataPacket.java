@@ -12,7 +12,7 @@ import com.google.gson.Gson;
  * @author nxkundu
  *
  */
-public class DataPacket implements Serializable{
+public class DataPacket implements Serializable, Cloneable{
 	
 	/**
 	 * 
@@ -29,6 +29,7 @@ public class DataPacket implements Serializable{
 	public static final String MESSAGE_TYPE_MULTICAST_MESSAGE = "MULTICAST_MESSAGE";
 	public static final String MESSAGE_TYPE_BROADCAST_MESSAGE = "BROADCAST_MESSAGE";
 	public static final String MESSAGE_TYPE_IMAGE_MESSAGE = "IMAGE_MESSAGE";
+	public static final String MESSAGE_TYPE_BROADCAST_IMAGE = "BROADCAST_IMAGE";
 	
 	private UUID id;
 	
@@ -151,6 +152,9 @@ public class DataPacket implements Serializable{
 		this.stringImage = Base64.getEncoder().encodeToString(byteImage);
 	}
 
-	
+	@Override
+	public Object clone() throws CloneNotSupportedException {
+		return super.clone();
+	}
 	
 }

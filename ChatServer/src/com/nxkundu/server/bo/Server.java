@@ -1,9 +1,11 @@
 package com.nxkundu.server.bo;
 
+import java.io.IOException;
 import java.io.Serializable;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
-import java.net.SocketException;
+import java.net.ServerSocket;
+import java.net.Socket;
 import java.net.UnknownHostException;
 
 /**
@@ -19,8 +21,19 @@ public class Server implements Serializable{
 	private static final long serialVersionUID = 1L;
 
 	private DatagramSocket datagramSocket;
-	private int port;
+	
+	private ServerSocket serverSocket;
+	private Socket clientSocket;
+	
+    public Socket getClientSocket() {
+		return clientSocket;
+	}
 
+	public void setClientSocket(Socket clientSocket) {
+		this.clientSocket = clientSocket;
+	}
+
+	private int port;
 	private String hostName;
 	private InetAddress inetAddress;
 
@@ -44,14 +57,22 @@ public class Server implements Serializable{
 		return server;
 	}
 
-	public void startServer() throws SocketException {
+	public void startServer() throws IOException {
 
+		this.setServerSocket(new ServerSocket(this.port));
+		
 		this.datagramSocket = new DatagramSocket(this.port);
 	}
 
-	public void connectToServer() throws SocketException {
+	public void connectToServer() throws IOException {
 
+		if(this.clientSocket == null) {
+			
+			this.clientSocket = new Socket(this.getInetAddress(), this.getPort());
+		}
+		
 		if(this.datagramSocket == null) {
+			
 			this.datagramSocket = new DatagramSocket();
 		}
 	}
@@ -86,5 +107,13 @@ public class Server implements Serializable{
 
 	public void setInetAddress(InetAddress inetAddress) {
 		this.inetAddress = inetAddress;
+	}
+
+	public ServerSocket getServerSocket() {
+		return serverSocket;
+	}
+
+	public void setServerSocket(ServerSocket serverSocket) {
+		this.serverSocket = serverSocket;
 	}
 }

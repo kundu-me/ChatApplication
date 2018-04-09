@@ -4,7 +4,7 @@ cd /Users/nxkundu/ACN_Project/ChatApplication/ChatServer/bin
 
 server
 cd /Users/nxkundu/ACN_Project/ChatApplication/ChatServer/bin
-java -cp :../lib/gson-2.2.2.jar com.nxkundu.server.main.Main
+java -cp :../lib/* com.nxkundu.server.main.Main
 
 
 client

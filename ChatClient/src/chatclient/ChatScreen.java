@@ -12,6 +12,7 @@ import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
+import java.io.FileFilter;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
@@ -19,6 +20,10 @@ import javax.swing.DefaultListModel;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ConcurrentMap;
 import javax.imageio.ImageIO;
+import javax.swing.Icon;
+import javax.swing.ImageIcon;
+import javax.swing.JFileChooser;
+import javax.swing.filechooser.FileNameExtensionFilter;
 
 /**
  *
@@ -403,16 +408,37 @@ public class ChatScreen extends javax.swing.JFrame implements Runnable{
             message = client.getUserName() +": " + message;
             clientService.sendPacket(DataPacket.MESSAGE_TYPE_MESSAGE, message, toClient);
         }
+        
+        listChatHistory.ensureIndexIsVisible(mapModelChatHistory.get(toClient).getSize());
     }
     
     private void sendImage() {
         
         String message = txtMessage.getText();
         String toClient = labelChatFriend.getText();
+        JFileChooser fileChooser = new JFileChooser();
         
-        if(!toClient.equals(DataPacket.MESSAGE_TYPE_IMAGE_MESSAGE)) {
+        fileChooser.addChoosableFileFilter(new FileNameExtensionFilter("Image Files", "jpg", "png", "tif"));
+
+        if (fileChooser.showOpenDialog(rootPane) == JFileChooser.APPROVE_OPTION) {
             
-            clientService.sendPacket(DataPacket.MESSAGE_TYPE_IMAGE_MESSAGE, "/Users/nxkundu/ACN_Project/icon1.jpg", toClient);
+            java.io.File file = fileChooser.getSelectedFile();
+        
+            if(toClient.equals(DataPacket.MESSAGE_TYPE_BROADCAST_MESSAGE)) {
+
+                clientService.sendPacket(DataPacket.MESSAGE_TYPE_BROADCAST_IMAGE, file.getPath(), toClient);
+                
+                mapModelChatHistory.get(toClient).addElement(new DisplayData("Me: ", new ImageIcon(file.getPath())));
+            }
+            else {
+                
+                clientService.sendPacket(DataPacket.MESSAGE_TYPE_IMAGE_MESSAGE, file.getPath(), toClient);
+                
+                mapModelChatHistory.get(toClient).addElement(new DisplayData("Me: ", new ImageIcon(file.getPath())));
+            
+            }
+            listChatHistory.ensureIndexIsVisible(mapModelChatHistory.get(toClient).getSize());
+            
         }
     }
     
@@ -434,6 +460,7 @@ public class ChatScreen extends javax.swing.JFrame implements Runnable{
         // TODO add your handling code here:
         if(evt.getKeyCode() == java.awt.event.KeyEvent.VK_ENTER) {
             sendMessage();
+            listChatHistory.ensureIndexIsVisible(listChatHistory.getMaxSelectionIndex());
         }
     }//GEN-LAST:event_txtMessageKeyPressed
 
@@ -597,9 +624,11 @@ public class ChatScreen extends javax.swing.JFrame implements Runnable{
                                         
                                         e.printStackTrace();
                                     }
-                                    modelChatHistory.addElement(new DisplayData("Image", (dataPacket.getByteImage())));
+                                    modelChatHistory.addElement(new DisplayData(dataPacket.getFromClient().getUserName(), (dataPacket.getByteImage())));
                                     break;
                             }
+                            
+                            listChatHistory.ensureIndexIsVisible(modelChatHistory.getSize());
                         }
                     }
                     

@@ -20,13 +20,19 @@ public class DisplayData {
     public DisplayData (String name) {
         
         this.name = name;
-        this.image = new ImageIcon("/Users/nxkundu/ACN_Project/icon1.jp");
+        this.image = null;
     }
     
     public DisplayData (String name, byte[] byteImage) {
         
         this.name = name;
         this.image = new ImageIcon(byteImage);
+    }
+    
+    public DisplayData (String name, Icon image) {
+        
+        this.name = name;
+        this.image = image;
     }
 
     public String getName() {

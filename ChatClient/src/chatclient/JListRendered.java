@@ -19,7 +19,6 @@ public class JListRendered extends DefaultListCellRenderer implements ListCellRe
     @Override
     public Component getListCellRendererComponent(JList<?> list, Object value, int index, boolean isSelected, boolean cellHasFocus) {
 
-        //ASSIGN TO VALUE THAT IS PASSED
         DisplayData displayData = (DisplayData) value;
 
         setText(displayData.getName());

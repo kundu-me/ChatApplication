@@ -2,6 +2,7 @@ package com.nxkundu.server.bo;
 
 import java.io.Serializable;
 import java.net.InetAddress;
+import java.net.Socket;
 import java.util.Date;
 
 /**
@@ -22,7 +23,7 @@ public class Client implements Serializable{
 	
 	private InetAddress inetAddress;
 	private int port;
-	
+
 	private long lastSeenTimestamp;
 	
 	public long getLastSeenTimestamp() {
@@ -97,11 +98,7 @@ public class Client implements Serializable{
 		this.userName = userName;
 	}
 
-	@Override
-	public String toString() {
-		return "Client [userName=" + userName + ", id=" + id + ", name=" + name + ", inetAddress=" + inetAddress
-				+ ", port=" + port + ", lastSeenTimestamp=" + lastSeenTimestamp + "]";
-	}
+	
 
 	public boolean isOnline() {
 		long dt = new Date().getTime();
@@ -144,7 +141,13 @@ public class Client implements Serializable{
 		return lastSeen;
 		
 	}
-	
+
+	@Override
+	public String toString() {
+		return "Client [userName=" + userName + ", id=" + id + ", name=" + name + ", inetAddress=" + inetAddress
+				+ ", port=" + port + ", lastSeenTimestamp=" + lastSeenTimestamp + "]";
+	}
+
 	
 	
 }

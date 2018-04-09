@@ -4,8 +4,12 @@ import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.lang.reflect.Type;
 import java.net.DatagramPacket;
+import java.net.InetAddress;
+import java.net.Socket;
 import java.net.SocketException;
 import java.net.UnknownHostException;
 import java.util.HashMap;
@@ -34,13 +38,13 @@ public class ClientService implements Runnable{
 	private Thread threadService;
 	private boolean isLoggedIn;
 
-	private Thread threadReceive;
+	private Thread threadReceivePacketUDP;
+	private Thread threadReceivePacketTCP;
 	private Thread threadOnlineStatus;
 
 	private ConcurrentMap<String, Client> mapAllClients;
 	private ConcurrentMap<String, ConcurrentLinkedQueue<DataPacket>> mapClientSendReceiveDataPacket;
-
-
+	
 	public ConcurrentMap<String, ConcurrentLinkedQueue<DataPacket>> getMapClientSendReceiveDataPacket() {
 		return mapClientSendReceiveDataPacket;
 	}
@@ -80,14 +84,6 @@ public class ClientService implements Runnable{
 
 	public void setLoggedIn(boolean isLoggedIn) {
 		this.isLoggedIn = isLoggedIn;
-	}
-
-	public Thread getThreadReceive() {
-		return threadReceive;
-	}
-
-	public void setThreadReceive(Thread threadReceive) {
-		this.threadReceive = threadReceive;
 	}
 
 	public Thread getThreadOnlineStatus() {
@@ -137,6 +133,10 @@ public class ClientService implements Runnable{
 		catch (UnknownHostException e) {
 
 			e.printStackTrace();
+		} 
+		catch (IOException e) {
+			
+			e.printStackTrace();
 		}
 
 	}
@@ -152,7 +152,9 @@ public class ClientService implements Runnable{
 	@Override
 	public void run() {
 
-		recievePacket();
+		recievePacketUDP();
+		
+		recievePacketTCP();
 
 		sendPacketOnlineStatus();
 
@@ -165,9 +167,7 @@ public class ClientService implements Runnable{
 			client = new Client(userName);
 			DataPacket dataPacket = new DataPacket(client, DataPacket.ACTION_TYPE_LOGIN);
 
-			byte[] data = dataPacket.toJSON().getBytes();
-			DatagramPacket datagramPacket = new DatagramPacket(data, data.length, server.getInetAddress(), server.getPort());
-			server.getDatagramSocket().send(datagramPacket);
+			sendPacket(dataPacket);
 
 		} 
 		catch (IOException e) {
@@ -186,9 +186,7 @@ public class ClientService implements Runnable{
 
 			DataPacket dataPacket = new DataPacket(client, DataPacket.ACTION_TYPE_LOGOUT);
 
-			byte[] data = dataPacket.toJSON().getBytes();
-			DatagramPacket datagramPacket = new DatagramPacket(data, data.length, server.getInetAddress(), server.getPort());
-			server.getDatagramSocket().send(datagramPacket);
+			sendPacket(dataPacket);
 
 		} 
 		catch (IOException e) {
@@ -220,6 +218,20 @@ public class ClientService implements Runnable{
 				dataPacket.setMessageType(DataPacket.MESSAGE_TYPE_BROADCAST_MESSAGE);
 				isValid = true;
 			}
+			else if(DataPacket.MESSAGE_TYPE_BROADCAST_IMAGE.equalsIgnoreCase(messageType)) {
+
+				dataPacket.setMessageType(DataPacket.MESSAGE_TYPE_BROADCAST_IMAGE);
+				System.out.println(message);
+				System.out.println(new File(message).exists());
+				BufferedImage bufferedImage = ImageIO.read(new File(message));
+				ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();        
+				ImageIO.write(bufferedImage, "jpg", byteArrayOutputStream);
+				byteArrayOutputStream.flush();
+				dataPacket.setByteImage(byteArrayOutputStream.toByteArray());
+				
+				
+				isValid = true;
+			}
 			else if(DataPacket.MESSAGE_TYPE_IMAGE_MESSAGE.equalsIgnoreCase(messageType)) {
 
 				dataPacket.setMessageType(DataPacket.MESSAGE_TYPE_IMAGE_MESSAGE);
@@ -242,9 +254,7 @@ public class ClientService implements Runnable{
 
 				//addClientSendReceiveDataPacket(dataPacket);
 
-				byte[] data = dataPacket.toJSON().getBytes();
-				DatagramPacket datagramPacket = new DatagramPacket(data, data.length, server.getInetAddress(), server.getPort());
-				server.getDatagramSocket().send(datagramPacket);
+				sendPacket(dataPacket);
 			}
 
 		} 
@@ -270,9 +280,9 @@ public class ClientService implements Runnable{
 
 	}
 
-	public void recievePacket() {
+	public void recievePacketUDP() {
 
-		threadReceive = new Thread("RecievePacket"){
+		threadReceivePacketUDP = new Thread("RecievePacketUDP"){
 
 			@Override
 			public void run() {
@@ -285,7 +295,12 @@ public class ClientService implements Runnable{
 					try {
 
 						server.getDatagramSocket().receive(datagramPacket);
-						processReceivedDatagramPacket(datagramPacket);
+						
+						String received = new String(datagramPacket.getData(), 0, datagramPacket.getLength());
+						DataPacket dataPacket = new Gson().fromJson(received, DataPacket.class);
+						System.out.println(dataPacket);
+						
+						processReceivedDatagramPacket(dataPacket);
 
 					} 
 					catch (IOException e) {
@@ -305,14 +320,12 @@ public class ClientService implements Runnable{
 			}
 		};
 
-		threadReceive.start();
+		threadReceivePacketUDP.start();
 	}
+	
+	
 
-
-	private void processReceivedDatagramPacket(DatagramPacket datagramPacket) {
-
-		String received = new String(datagramPacket.getData(), 0, datagramPacket.getLength());
-		DataPacket dataPacket = new Gson().fromJson(received, DataPacket.class);
+	private void processReceivedDatagramPacket(DataPacket dataPacket) {
 
 		switch(dataPacket.getAction()) {
 
@@ -335,6 +348,11 @@ public class ClientService implements Runnable{
 				break;
 
 			case DataPacket.MESSAGE_TYPE_BROADCAST_MESSAGE:
+
+				addClientSendReceiveDataPacket(dataPacket);
+				break;
+				
+			case DataPacket.MESSAGE_TYPE_BROADCAST_IMAGE:
 
 				addClientSendReceiveDataPacket(dataPacket);
 				break;
@@ -368,10 +386,8 @@ public class ClientService implements Runnable{
 					try {
 
 						DataPacket dataPacket = new DataPacket(client, DataPacket.ACTION_TYPE_ONLINE);
-
-						byte[] data = dataPacket.toJSON().getBytes();
-						DatagramPacket datagramPacket = new DatagramPacket(data, data.length, server.getInetAddress(), server.getPort());
-						server.getDatagramSocket().send(datagramPacket);
+								
+						sendPacket(dataPacket);
 
 					} 
 					catch (IOException e) {
@@ -393,5 +409,88 @@ public class ClientService implements Runnable{
 
 		threadOnlineStatus.start();
 	}
+	
+	public void recievePacketTCP() {
+
+		threadReceivePacketTCP = new Thread("RecievePacketTCP"){
+
+			@Override
+			public void run() {
+
+				while(isLoggedIn) {
+
+					byte[] data = new byte[1024*60];
+
+					try {
+						
+						InputStream in = server.getClientSocket().getInputStream();
+
+						in.read(data, 0, data.length);
+						String received = new String(data, 0, data.length).trim();
+						DataPacket dataPacket = new Gson().fromJson(received, DataPacket.class);
+						System.out.println(dataPacket);
+						
+						processReceivedDatagramPacket(dataPacket);
+
+
+					} 
+					catch (Exception e) {
+
+						e.printStackTrace();
+					}
+
+					try {
+
+						Thread.sleep(500);
+					}
+					catch(Exception e) {
+
+						e.printStackTrace();
+					}
+				}
+			}
+		};
+
+		threadReceivePacketTCP.start();
+	}
+
+	public void sendPacketByTCP(DataPacket dataPacket) throws IOException {
+		
+		Socket socket = server.getClientSocket();
+		OutputStream out = socket.getOutputStream();
+		out.write(dataPacket.toJSON().getBytes());
+		out.flush();
+	}
+
+	public void sendPacketByUDP(DataPacket dataPacket) throws IOException {
+	
+		InetAddress inetAddress = server.getInetAddress();
+		int port = server.getPort();
+		byte[] data = dataPacket.toJSON().getBytes();
+		DatagramPacket datagramPacket = new DatagramPacket(data, data.length, inetAddress, port);
+
+		server.getDatagramSocket().send(datagramPacket);
+	}
+	
+	public void sendPacket(DataPacket dataPacket) throws IOException {
+
+		sendPacketByUDP(dataPacket);
+		
+//		if(dataPacket.getAction().equals(DataPacket.ACTION_TYPE_MESSAGE)) {
+//			
+//			sendPacketByTCP(dataPacket);
+//		}
+//		else if(dataPacket.getAction().equals(DataPacket.ACTION_TYPE_LOGIN)) {
+//			
+//			sendPacketByTCP(dataPacket);
+//			
+//		}
+//		else {
+//			
+//			sendPacketByUDP(dataPacket);
+//		}
+
+	}
+
 
 }

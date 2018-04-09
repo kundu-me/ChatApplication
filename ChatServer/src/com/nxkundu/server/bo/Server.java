@@ -23,6 +23,8 @@ public class Server implements Serializable{
 	private int port;
 	private String hostName;
 	private InetAddress inetAddress;
+	
+	public static final String SERVER_USERNAME = "SERVER";
 
 	public static Server server;
 

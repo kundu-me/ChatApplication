@@ -10,6 +10,7 @@ import java.net.InetAddress;
 import java.net.SocketException;
 import java.net.UnknownHostException;
 import java.util.HashMap;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ConcurrentMap;
@@ -39,15 +40,36 @@ public class ClientService implements Runnable{
 	private Thread threadOnlineStatus;
 
 	private ConcurrentMap<String, Client> mapAllClients;
-	private ConcurrentMap<String, ConcurrentLinkedQueue<DataPacket>> mapClientSendReceiveDataPacket;
-	
-	public ConcurrentMap<String, ConcurrentLinkedQueue<DataPacket>> getMapClientSendReceiveDataPacket() {
-		return mapClientSendReceiveDataPacket;
+
+	private ConcurrentMap<String, ConcurrentLinkedQueue<DataPacket>> mapClientReceivedDataPacket;
+
+	private ConcurrentMap<UUID, DataPacket> mapSentDataPacket;
+	private ConcurrentMap<UUID, DataPacket> mapReceivedDataPacket;
+
+
+	public ConcurrentMap<UUID, DataPacket> getMapSentDataPacket() {
+		return mapSentDataPacket;
 	}
 
-	public void setMapClientSendReceiveDataPacket(
-			ConcurrentMap<String, ConcurrentLinkedQueue<DataPacket>> mapClientSendReceiveDataPacket) {
-		this.mapClientSendReceiveDataPacket = mapClientSendReceiveDataPacket;
+	public void setMapSentDataPacket(ConcurrentMap<UUID, DataPacket> mapSentDataPacket) {
+		this.mapSentDataPacket = mapSentDataPacket;
+	}
+
+	public ConcurrentMap<UUID, DataPacket> getMapReceivedDataPacket() {
+		return mapReceivedDataPacket;
+	}
+
+	public void setMapReceivedDataPacket(ConcurrentMap<UUID, DataPacket> mapReceivedDataPacket) {
+		this.mapReceivedDataPacket = mapReceivedDataPacket;
+	}
+
+	public ConcurrentMap<String, ConcurrentLinkedQueue<DataPacket>> getMapClientReceivedDataPacket() {
+		return mapClientReceivedDataPacket;
+	}
+
+	public void setMapClientReceivedDataPacket(
+			ConcurrentMap<String, ConcurrentLinkedQueue<DataPacket>> mapClientReceivedDataPacket) {
+		this.mapClientReceivedDataPacket = mapClientReceivedDataPacket;
 	}
 
 	public Server getServer() {
@@ -66,28 +88,12 @@ public class ClientService implements Runnable{
 		this.client = client;
 	}
 
-	public Thread getThreadService() {
-		return threadService;
-	}
-
-	public void setThreadService(Thread threadService) {
-		this.threadService = threadService;
-	}
-
 	public boolean isLoggedIn() {
 		return isLoggedIn;
 	}
 
 	public void setLoggedIn(boolean isLoggedIn) {
 		this.isLoggedIn = isLoggedIn;
-	}
-
-	public Thread getThreadOnlineStatus() {
-		return threadOnlineStatus;
-	}
-
-	public void setThreadOnlineStatus(Thread threadOnlineStatus) {
-		this.threadOnlineStatus = threadOnlineStatus;
 	}
 
 	public static ClientService getClientService() {
@@ -114,7 +120,10 @@ public class ClientService implements Runnable{
 
 		isLoggedIn = false;
 
-		mapClientSendReceiveDataPacket = new ConcurrentHashMap<>();
+		mapClientReceivedDataPacket = new ConcurrentHashMap<>();
+
+		mapSentDataPacket = new ConcurrentHashMap<>();
+		mapReceivedDataPacket = new ConcurrentHashMap<>();
 
 		try {
 
@@ -131,7 +140,7 @@ public class ClientService implements Runnable{
 			e.printStackTrace();
 		} 
 		catch (IOException e) {
-			
+
 			e.printStackTrace();
 		}
 
@@ -149,7 +158,7 @@ public class ClientService implements Runnable{
 	public void run() {
 
 		recievePacketUDP();
-		
+
 		sendPacketOnlineStatus();
 
 	}
@@ -222,8 +231,8 @@ public class ClientService implements Runnable{
 				ImageIO.write(bufferedImage, "jpg", byteArrayOutputStream);
 				byteArrayOutputStream.flush();
 				dataPacket.setByteImage(byteArrayOutputStream.toByteArray());
-				
-				
+
+
 				isValid = true;
 			}
 			else if(DataPacket.MESSAGE_TYPE_IMAGE_MESSAGE.equalsIgnoreCase(messageType)) {
@@ -236,7 +245,7 @@ public class ClientService implements Runnable{
 				ImageIO.write(bufferedImage, "jpg", byteArrayOutputStream);
 				byteArrayOutputStream.flush();
 				dataPacket.setByteImage(byteArrayOutputStream.toByteArray());
-				
+
 				Client toClient = new Client(toClientUserName);
 				dataPacket.setToClient(toClient);
 
@@ -259,18 +268,18 @@ public class ClientService implements Runnable{
 
 	}
 
-	private void addClientSendReceiveDataPacket(DataPacket dataPacket) {
+	private void addReceivedDataPacket(DataPacket dataPacket) {
 
-		ConcurrentLinkedQueue<DataPacket> qClientSendReceive = null;
-		if(mapClientSendReceiveDataPacket.containsKey(dataPacket.getFromClient().getUserName())) {
-			qClientSendReceive = mapClientSendReceiveDataPacket.get(dataPacket.getFromClient().getUserName());
+		ConcurrentLinkedQueue<DataPacket> qClientReceived = null;
+		if(mapClientReceivedDataPacket.containsKey(dataPacket.getFromClient().getUserName())) {
+			qClientReceived = mapClientReceivedDataPacket.get(dataPacket.getFromClient().getUserName());
 		}
 		else {
-			qClientSendReceive = new ConcurrentLinkedQueue<>();
+			qClientReceived = new ConcurrentLinkedQueue<>();
 		}
 
-		qClientSendReceive.add(dataPacket);
-		mapClientSendReceiveDataPacket.put(dataPacket.getFromClient().getUserName(), qClientSendReceive);
+		qClientReceived.add(dataPacket);
+		mapClientReceivedDataPacket.put(dataPacket.getFromClient().getUserName(), qClientReceived);
 
 	}
 
@@ -289,11 +298,11 @@ public class ClientService implements Runnable{
 					try {
 
 						server.getDatagramSocket().receive(datagramPacket);
-						
+
 						String received = new String(datagramPacket.getData(), 0, datagramPacket.getLength());
 						DataPacket dataPacket = new Gson().fromJson(received, DataPacket.class);
 						System.out.println(dataPacket);
-						
+
 						processReceivedDatagramPacket(dataPacket);
 
 					} 
@@ -316,8 +325,8 @@ public class ClientService implements Runnable{
 
 		threadReceivePacketUDP.start();
 	}
-	
-	
+
+
 
 	private void processReceivedDatagramPacket(DataPacket dataPacket) {
 
@@ -330,37 +339,78 @@ public class ClientService implements Runnable{
 
 			break;
 
+		case DataPacket.ACTION_TYPE_ACK:
+
+			UUID dataPacketACKId = UUID.fromString(dataPacket.getMessage());
+
+			if(mapSentDataPacket.containsKey(dataPacketACKId)) {
+
+				mapSentDataPacket.remove(dataPacketACKId);
+			}
+			else {
+
+				//Not Possible
+			}
+
+			break;
+
+
 		case DataPacket.ACTION_TYPE_MESSAGE:
 
+			DataPacket dataPacketACK = new DataPacket(dataPacket.getFromClient(), DataPacket.ACTION_TYPE_ACK);
+			dataPacketACK.setMessage(dataPacket.getId().toString());
+
+			if(mapReceivedDataPacket.containsKey(dataPacket.getId())) {
+
+				try {
+
+					sendPacket(dataPacketACK);
+
+				} 
+				catch (IOException e) {
+					e.printStackTrace();
+				}
+				break;
+			}
+
+			mapReceivedDataPacket.put(dataPacket.getId(), dataPacket);
 			System.out.println(dataPacket.getFromClient().getUserName() + " => " + dataPacket.getMessage());
 
 			switch (dataPacket.getMessageType()) {
 
 			case DataPacket.MESSAGE_TYPE_MESSAGE:
 
-				addClientSendReceiveDataPacket(dataPacket);
+				addReceivedDataPacket(dataPacket);
 				break;
 
 			case DataPacket.MESSAGE_TYPE_BROADCAST_MESSAGE:
 
-				addClientSendReceiveDataPacket(dataPacket);
+				addReceivedDataPacket(dataPacket);
 				break;
-				
+
 			case DataPacket.MESSAGE_TYPE_BROADCAST_IMAGE:
 
-				addClientSendReceiveDataPacket(dataPacket);
+				addReceivedDataPacket(dataPacket);
 				break;
-				
+
 			case DataPacket.MESSAGE_TYPE_IMAGE_MESSAGE:
 
-				addClientSendReceiveDataPacket(dataPacket);
+				addReceivedDataPacket(dataPacket);
 				break;
 
 			case DataPacket.MESSAGE_TYPE_MULTICAST_MESSAGE:
 
-
 				break;
 
+			}
+
+			try {
+
+				sendPacket(dataPacketACK);
+
+			} 
+			catch (IOException e) {
+				e.printStackTrace();
 			}
 
 			break;
@@ -380,7 +430,7 @@ public class ClientService implements Runnable{
 					try {
 
 						DataPacket dataPacket = new DataPacket(client, DataPacket.ACTION_TYPE_ONLINE);
-								
+
 						sendPacket(dataPacket);
 
 					} 
@@ -403,9 +453,9 @@ public class ClientService implements Runnable{
 
 		threadOnlineStatus.start();
 	}
-	
+
 	public void sendPacketByUDP(DataPacket dataPacket) throws IOException {
-	
+
 		InetAddress inetAddress = server.getInetAddress();
 		int port = server.getPort();
 		byte[] data = dataPacket.toJSON().getBytes();
@@ -413,11 +463,14 @@ public class ClientService implements Runnable{
 
 		server.getDatagramSocket().send(datagramPacket);
 	}
-	
+
 	public void sendPacket(DataPacket dataPacket) throws IOException {
 
+		if(dataPacket.getAction().equals(DataPacket.ACTION_TYPE_MESSAGE)) {
+			mapSentDataPacket.put(dataPacket.getId(), dataPacket);
+		}
 		sendPacketByUDP(dataPacket);
-		
+
 	}
 
 

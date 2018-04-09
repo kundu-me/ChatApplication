@@ -589,10 +589,10 @@ public class ChatScreen extends javax.swing.JFrame implements Runnable{
                     
                     if(!fromClient.equals(DataPacket.MESSAGE_TYPE_BROADCAST_MESSAGE)) {
                         
-                        Map<String, ConcurrentLinkedQueue<DataPacket>> mapClientSendReceiveDataPacket = null;
-                        mapClientSendReceiveDataPacket = clientService.getMapClientSendReceiveDataPacket();
+                        Map<String, ConcurrentLinkedQueue<DataPacket>> mapClientReceivedDataPacket = null;
+                        mapClientReceivedDataPacket = clientService.getMapClientReceivedDataPacket();
 
-                        ConcurrentLinkedQueue<DataPacket> qDataPacket = mapClientSendReceiveDataPacket.get(fromClient);
+                        ConcurrentLinkedQueue<DataPacket> qDataPacket = mapClientReceivedDataPacket.get(fromClient);
 
                         if(qDataPacket != null && !qDataPacket.isEmpty()) {
 
@@ -657,18 +657,18 @@ public class ChatScreen extends javax.swing.JFrame implements Runnable{
                 
                 while(clientService.isLoggedIn()) {
                     
-                    Map<String, ConcurrentLinkedQueue<DataPacket>> mapClientSendReceiveDataPacket = null;
-                    mapClientSendReceiveDataPacket = clientService.getMapClientSendReceiveDataPacket();
+                    Map<String, ConcurrentLinkedQueue<DataPacket>> mapClientReceivedDataPacket = null;
+                    mapClientReceivedDataPacket = clientService.getMapClientReceivedDataPacket();
                     
                     String exceptClient = labelChatFriend.getText();
                     
-                    for(String fromClient : mapClientSendReceiveDataPacket.keySet()) { 
+                    for(String fromClient : mapClientReceivedDataPacket.keySet()) { 
                         
                         if(fromClient.equals(exceptClient)) {
                             continue;
                         }
   
-                        ConcurrentLinkedQueue<DataPacket> qDataPacket = mapClientSendReceiveDataPacket.get(fromClient);
+                        ConcurrentLinkedQueue<DataPacket> qDataPacket = mapClientReceivedDataPacket.get(fromClient);
 
                         if(qDataPacket != null && !qDataPacket.isEmpty()) {
 

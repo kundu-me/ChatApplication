@@ -8,6 +8,7 @@ import java.net.UnknownHostException;
 import java.util.Date;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ConcurrentMap;
@@ -36,11 +37,17 @@ public class ServerService implements Runnable{
 
 	private ConcurrentLinkedQueue<DataPacket> qSendPacket;
 
+	private ConcurrentMap<UUID, DataPacket> mapSentDataPacket;
+	private ConcurrentMap<UUID, DataPacket> mapReceivedDataPacket;
+
 	public ServerService(){
 
 		isService = false;
 
 		mapAllClients = new ConcurrentHashMap<>();
+		
+		mapSentDataPacket = new ConcurrentHashMap<>();
+		mapReceivedDataPacket = new ConcurrentHashMap<>();
 
 		qSendPacket = new ConcurrentLinkedQueue<>();
 	}
@@ -140,6 +147,8 @@ public class ServerService implements Runnable{
 
 	private void processReceivedDatagramPacket(DataPacket dataPacket, Client fromClient) {
 
+		dataPacket.setFromClient(fromClient);
+		
 		switch(dataPacket.getAction()) {
 
 		case DataPacket.ACTION_TYPE_LOGIN:
@@ -166,9 +175,37 @@ public class ServerService implements Runnable{
 			mapAllClients.put(fromClient.getUserName(), fromClient);
 			break;
 
+		case DataPacket.ACTION_TYPE_ACK:
+
+
+			UUID dataPacketACKId = UUID.fromString(dataPacket.getMessage());
+			
+			if(mapSentDataPacket.containsKey(dataPacketACKId)) {
+				
+				mapSentDataPacket.remove(dataPacketACKId);
+			}
+			else {
+				
+				//Not Possible
+			}
+			
+			break;
+
 		case DataPacket.ACTION_TYPE_MESSAGE:
 
-			dataPacket.setFromClient(fromClient);
+			Client serverToClientACK = new Client(Server.SERVER_USERNAME);
+			DataPacket dataPacketACK = new DataPacket(serverToClientACK, DataPacket.ACTION_TYPE_ACK);
+			dataPacketACK.setToClient(fromClient);
+			dataPacketACK.setFromClient(fromClient);
+			dataPacketACK.setMessage(dataPacket.getId().toString());
+			qSendPacket.add(dataPacketACK);
+
+			if(mapReceivedDataPacket.containsKey(dataPacket.getId())) {
+				
+				break;
+			}
+
+			mapReceivedDataPacket.put(dataPacket.getId(), dataPacket);
 
 			switch (dataPacket.getMessageType()) {
 
@@ -212,7 +249,7 @@ public class ServerService implements Runnable{
 				}
 
 				break;
-				
+
 			case DataPacket.MESSAGE_TYPE_BROADCAST_IMAGE:
 
 				for(String key : mapAllClients.keySet()) {
@@ -275,38 +312,31 @@ public class ServerService implements Runnable{
 
 	public void sendClientStatus(boolean isSendToAllClient, Client specificClient) {
 
-		try {
+		Client severToClient = new Client(Server.SERVER_USERNAME);
 
-			Client client = new Client("server@" + server.getPort() + "");
+		Set<String> setAllClientEmail = null;
+		if(!isSendToAllClient) {
+			setAllClientEmail = new HashSet<>();
+			setAllClientEmail.add(specificClient.getUserName());
+		}
+		else {
+			setAllClientEmail = mapAllClients.keySet();
+		}
 
-			Set<String> setAllClientEmail = null;
-			if(!isSendToAllClient) {
-				setAllClientEmail = new HashSet<>();
-				setAllClientEmail.add(specificClient.getUserName());
+		for(String key : setAllClientEmail) {
+
+			Client toClient = mapAllClients.get(key);
+
+			if(toClient.isOnline()) {
+
+				DataPacket dataPacket = new DataPacket(severToClient, DataPacket.ACTION_TYPE_ONLINE);
+				dataPacket.setToClient(toClient);
+
+				String allClientData = new Gson().toJson(mapAllClients);
+				dataPacket.setMessage(allClientData);
+
+				qSendPacket.add(dataPacket);
 			}
-			else {
-				setAllClientEmail = mapAllClients.keySet();
-			}
-
-			for(String key : setAllClientEmail) {
-
-				Client toClient = mapAllClients.get(key);
-
-				if(toClient.isOnline()) {
-
-					DataPacket dataPacket = new DataPacket(client, DataPacket.ACTION_TYPE_ONLINE);
-					dataPacket.setToClient(toClient);
-
-					String allClientData = new Gson().toJson(mapAllClients);
-					dataPacket.setMessage(allClientData);
-
-					sendPacket(dataPacket);
-				}
-			}
-		} 
-		catch (IOException e) {
-
-			e.printStackTrace();
 		}
 
 	}
@@ -363,6 +393,7 @@ public class ServerService implements Runnable{
 						InetAddress inetAddress = datagramPacket.getAddress();
 						int port = datagramPacket.getPort();
 
+						System.out.println(dataPacket);
 						String userName = dataPacket.getFromClient().getUserName();
 						String id = "";
 						String name = "";
@@ -407,7 +438,27 @@ public class ServerService implements Runnable{
 
 	public void sendPacket(DataPacket dataPacket) throws IOException {
 
-		sendPacketByUDP(dataPacket);
+		if(dataPacket.getAction().equals(DataPacket.ACTION_TYPE_MESSAGE)) {
+			mapSentDataPacket.put(dataPacket.getId(), dataPacket);
+		}
 		
+		sendPacketByUDP(dataPacket);
+
+	}
+
+	public ConcurrentMap<UUID, DataPacket> getMapSentDataPacket() {
+		return mapSentDataPacket;
+	}
+
+	public void setMapSentDataPacket(ConcurrentMap<UUID, DataPacket> mapSentDataPacket) {
+		this.mapSentDataPacket = mapSentDataPacket;
+	}
+
+	public ConcurrentMap<UUID, DataPacket> getMapReceivedDataPacket() {
+		return mapReceivedDataPacket;
+	}
+
+	public void setMapReceivedDataPacket(ConcurrentMap<UUID, DataPacket> mapReceivedDataPacket) {
+		this.mapReceivedDataPacket = mapReceivedDataPacket;
 	}
 }

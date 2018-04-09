@@ -24,6 +24,7 @@ public class DataPacket implements Serializable, Cloneable{
 	public static final String ACTION_TYPE_LOGIN = "LOGIN";
 	public static final String ACTION_TYPE_LOGOUT = "LOGOUT";
 	public static final String ACTION_TYPE_ONLINE = "ONLINE";
+	public static final String ACTION_TYPE_ACK = "ACK";
 	
 	public static final String MESSAGE_TYPE_MESSAGE = "SINGLE_MESSAGE";
 	public static final String MESSAGE_TYPE_MULTICAST_MESSAGE = "MULTICAST_MESSAGE";
@@ -45,14 +46,23 @@ public class DataPacket implements Serializable, Cloneable{
 	private String stringImage;
 	
 	private long timestamp;
+	
 	private boolean isACK;
 
-	public DataPacket(String action) {
-		super();
-		this.action = action;
-		this.setId(UUID.randomUUID());
-		this.setACK(false);
-		this.setTimestamp(new Date().getTime());
+	public String getStringImage() {
+		return stringImage;
+	}
+
+	public void setStringImage(String stringImage) {
+		this.stringImage = stringImage;
+	}
+
+	public boolean isACK() {
+		return isACK;
+	}
+
+	public void setACK(boolean isACK) {
+		this.isACK = isACK;
 	}
 	
 	public DataPacket(Client fromClient, String action) {
@@ -119,14 +129,6 @@ public class DataPacket implements Serializable, Cloneable{
 		this.id = id;
 	}
 
-	public boolean isACK() {
-		return isACK;
-	}
-
-	public void setACK(boolean isACK) {
-		this.isACK = isACK;
-	}
-
 	public long getTimestamp() {
 		return timestamp;
 	}
@@ -138,8 +140,8 @@ public class DataPacket implements Serializable, Cloneable{
 	@Override
 	public String toString() {
 		return "DataPacket [id=" + id + ", action=" + action + ", messageType=" + messageType + ", fromClient="
-				+ fromClient + ", toClient=" + toClient + ", message=" + message + ", timestamp=" + timestamp
-				+ ", isACK=" + isACK + "]";
+				+ fromClient + ", toClient=" + toClient + ", message=" + message + ", stringImage=" + stringImage
+				+ ", timestamp=" + timestamp + ", isACK=" + isACK + "]";
 	}
 
 	public byte[] getByteImage() {

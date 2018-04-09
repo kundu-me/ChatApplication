@@ -4,12 +4,9 @@ import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
 import java.lang.reflect.Type;
 import java.net.DatagramPacket;
 import java.net.InetAddress;
-import java.net.Socket;
 import java.net.SocketException;
 import java.net.UnknownHostException;
 import java.util.HashMap;
@@ -39,7 +36,6 @@ public class ClientService implements Runnable{
 	private boolean isLoggedIn;
 
 	private Thread threadReceivePacketUDP;
-	private Thread threadReceivePacketTCP;
 	private Thread threadOnlineStatus;
 
 	private ConcurrentMap<String, Client> mapAllClients;
@@ -154,8 +150,6 @@ public class ClientService implements Runnable{
 
 		recievePacketUDP();
 		
-		recievePacketTCP();
-
 		sendPacketOnlineStatus();
 
 	}
@@ -410,58 +404,6 @@ public class ClientService implements Runnable{
 		threadOnlineStatus.start();
 	}
 	
-	public void recievePacketTCP() {
-
-		threadReceivePacketTCP = new Thread("RecievePacketTCP"){
-
-			@Override
-			public void run() {
-
-				while(isLoggedIn) {
-
-					byte[] data = new byte[1024*60];
-
-					try {
-						
-						InputStream in = server.getClientSocket().getInputStream();
-
-						in.read(data, 0, data.length);
-						String received = new String(data, 0, data.length).trim();
-						DataPacket dataPacket = new Gson().fromJson(received, DataPacket.class);
-						System.out.println(dataPacket);
-						
-						processReceivedDatagramPacket(dataPacket);
-
-
-					} 
-					catch (Exception e) {
-
-						e.printStackTrace();
-					}
-
-					try {
-
-						Thread.sleep(500);
-					}
-					catch(Exception e) {
-
-						e.printStackTrace();
-					}
-				}
-			}
-		};
-
-		threadReceivePacketTCP.start();
-	}
-
-	public void sendPacketByTCP(DataPacket dataPacket) throws IOException {
-		
-		Socket socket = server.getClientSocket();
-		OutputStream out = socket.getOutputStream();
-		out.write(dataPacket.toJSON().getBytes());
-		out.flush();
-	}
-
 	public void sendPacketByUDP(DataPacket dataPacket) throws IOException {
 	
 		InetAddress inetAddress = server.getInetAddress();
@@ -476,20 +418,6 @@ public class ClientService implements Runnable{
 
 		sendPacketByUDP(dataPacket);
 		
-//		if(dataPacket.getAction().equals(DataPacket.ACTION_TYPE_MESSAGE)) {
-//			
-//			sendPacketByTCP(dataPacket);
-//		}
-//		else if(dataPacket.getAction().equals(DataPacket.ACTION_TYPE_LOGIN)) {
-//			
-//			sendPacketByTCP(dataPacket);
-//			
-//		}
-//		else {
-//			
-//			sendPacketByUDP(dataPacket);
-//		}
-
 	}
 
 

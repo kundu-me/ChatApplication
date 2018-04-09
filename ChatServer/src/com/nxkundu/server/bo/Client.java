@@ -2,7 +2,6 @@ package com.nxkundu.server.bo;
 
 import java.io.Serializable;
 import java.net.InetAddress;
-import java.net.Socket;
 import java.util.Date;
 
 /**

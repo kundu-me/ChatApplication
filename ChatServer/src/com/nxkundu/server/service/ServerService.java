@@ -1,11 +1,8 @@
 package com.nxkundu.server.service;
 
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
 import java.net.DatagramPacket;
 import java.net.InetAddress;
-import java.net.Socket;
 import java.net.SocketException;
 import java.net.UnknownHostException;
 import java.util.Date;
@@ -33,11 +30,9 @@ public class ServerService implements Runnable{
 
 	private Thread threadSend;
 	private Thread threadReceivePacketUDP;
-	private Thread threadReceivePacketTCP;
 	private Thread threadBroadcastClientStatus;
 
 	private ConcurrentMap<String, Client> mapAllClients;
-	private ConcurrentMap<String, Socket> mapAllClientSockets;
 
 	private ConcurrentLinkedQueue<DataPacket> qSendPacket;
 
@@ -46,8 +41,6 @@ public class ServerService implements Runnable{
 		isService = false;
 
 		mapAllClients = new ConcurrentHashMap<>();
-
-		mapAllClientSockets = new ConcurrentHashMap<>();
 
 		qSendPacket = new ConcurrentLinkedQueue<>();
 	}
@@ -89,8 +82,6 @@ public class ServerService implements Runnable{
 		isService = true;
 
 		recievePacketUDP();
-
-		recievePacketTCP();
 
 		sendPacket();
 
@@ -403,91 +394,6 @@ public class ServerService implements Runnable{
 		threadReceivePacketUDP.start();
 	}
 
-	private void recievePacketTCP() {
-
-		//OK
-		threadReceivePacketTCP = new Thread("RecievePacketTCP"){
-
-			@Override
-			public void run() {
-
-				while(isService) {
-
-					byte[] data = new byte[1024*60];
-
-					try {
-
-						Socket socket = server.getServerSocket().accept(); 
-						InputStream in = socket.getInputStream();
-
-						Thread thC = new Thread("dd") {
-							
-							@Override
-							public void run() {
-								
-								try {
-	
-									while(true) {
-										
-										in.read(data, 0, data.length);
-										
-										String receivedData = new String(data, 0 , data.length).trim();
-										System.out.println("daaaattttaaa Sever : " + receivedData);
-										
-										DataPacket dataPacket = new Gson().fromJson(receivedData, DataPacket.class);
-										
-										Client fromClient = dataPacket.getFromClient();
-										mapAllClientSockets.put(dataPacket.getFromClient().getUserName(), socket);
-										System.out.println(mapAllClientSockets);
-										processReceivedDatagramPacket(dataPacket, fromClient);
-									}
-								}
-								catch (Exception e) {
-
-									e.printStackTrace();
-								}
-							}
-						};
-						thC.start();
-
-					} 
-					catch (Exception e) {
-
-						e.printStackTrace();
-					}
-
-
-					try {
-
-						Thread.sleep(500);
-					}
-					catch(Exception e) {
-
-						e.printStackTrace();
-					}
-				}
-			}
-		};
-
-		threadReceivePacketTCP.start();
-	}
-
-	public void sendPacketByTCP(DataPacket dataPacket) throws IOException {
-
-		Socket socket = mapAllClientSockets.get(dataPacket.getToClient().getUserName());
-		System.out.println(socket);
-		
-		try {
-			
-			OutputStream out = socket.getOutputStream();
-			out.write(dataPacket.toJSON().getBytes());
-			out.flush();
-		}
-		catch(Exception e) {
-			e.printStackTrace();
-		}
-	}
-	
 	public void sendPacketByUDP(DataPacket dataPacket) throws IOException {
 
 		InetAddress inetAddress = dataPacket.getToClient().getInetAddress();
@@ -503,20 +409,5 @@ public class ServerService implements Runnable{
 
 		sendPacketByUDP(dataPacket);
 		
-//		if(dataPacket.getAction().equals(DataPacket.ACTION_TYPE_MESSAGE)) {
-//			
-//			sendPacketByTCP(dataPacket);
-//		}
-//		else if(dataPacket.getAction().equals(DataPacket.ACTION_TYPE_LOGIN)) {
-//			
-//			sendPacketByUDP(dataPacket);
-//			sendPacketByTCP(dataPacket);	
-//		}
-//		else {
-//			
-//			sendPacketByUDP(dataPacket);
-//		}
-
 	}
-
 }

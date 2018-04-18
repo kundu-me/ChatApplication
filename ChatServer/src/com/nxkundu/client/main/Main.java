@@ -19,7 +19,7 @@ public class Main {
 		System.out.println("Enter your username: ");
 		Scanner scanner = new Scanner(System.in);
 		String userName = scanner.nextLine();
-		service.login(userName.trim());
+		service.login(userName.trim(), "ee");
 		
 		while(true) {
 			

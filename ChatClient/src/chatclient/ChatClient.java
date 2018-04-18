@@ -18,7 +18,7 @@ public class ChatClient {
         // TODO code application logic here
         
         System.out.println("Client Started ...");
-        Login login = new Login();
+        Login login = Login.getInstance();
         login.setVisible(true);
     }
     

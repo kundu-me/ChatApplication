@@ -9,6 +9,12 @@ import java.net.UnknownHostException;
 /**
  * 
  * @author nxkundu
+ * 
+ * Server Class holds all the server information
+ * This is a singleton class
+ * As we need to create the Server object only once
+ * and whenever we need server information we call get the
+ * reference to the server object and retrieve the server information
  *
  */
 public class Server implements Serializable{
@@ -27,6 +33,8 @@ public class Server implements Serializable{
 	public static final String SERVER_USERNAME = "SERVER";
 
 	public static Server server;
+	
+	/****************************** Constructors ********************************************/
 
 	private Server() throws UnknownHostException {
 		super();
@@ -36,7 +44,15 @@ public class Server implements Serializable{
 		this.port = 8005;
 
 	}
+	
+	/****************************** Object Methods ******************************************/
 
+	/**
+	 * This method returns the server object if already created
+	 * else, create a obje t and return it
+	 * @return
+	 * @throws UnknownHostException
+	 */
 	public static Server getInstance() throws UnknownHostException {
 
 		if(server == null) {
@@ -46,11 +62,20 @@ public class Server implements Serializable{
 		return server;
 	}
 
+	/**
+	 * This method starts the server at the defined port
+	 * @throws IOException
+	 */
 	public void startServer() throws IOException {
 		
 		this.datagramSocket = new DatagramSocket(this.port);
 	}
 
+	/**
+	 * This method allows the Client to
+	 * Connect to the server
+	 * @throws IOException
+	 */
 	public void connectToServer() throws IOException {
 		
 		if(this.datagramSocket == null) {
@@ -59,6 +84,9 @@ public class Server implements Serializable{
 		}
 	}
 
+	
+	/****************************** Getters and Setters *************************************/
+	
 	public DatagramSocket getDatagramSocket() {
 		return datagramSocket;
 	}

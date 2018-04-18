@@ -9,6 +9,7 @@ import java.net.DatagramPacket;
 import java.net.InetAddress;
 import java.net.SocketException;
 import java.net.UnknownHostException;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -38,6 +39,7 @@ public class ClientService implements Runnable{
 
 	private Thread threadReceivePacketUDP;
 	private Thread threadOnlineStatus;
+	private Thread threadResendDataPacketIfNoACKReceived;
 
 	private ConcurrentMap<String, Client> mapAllClients;
 
@@ -46,6 +48,10 @@ public class ClientService implements Runnable{
 	private ConcurrentMap<UUID, DataPacket> mapSentDataPacket;
 	private ConcurrentMap<UUID, DataPacket> mapReceivedDataPacket;
 
+	private ConcurrentLinkedQueue<DataPacket> qSignupLoginLogoutDataPacket;
+
+
+	
 
 	public ConcurrentMap<UUID, DataPacket> getMapSentDataPacket() {
 		return mapSentDataPacket;
@@ -118,12 +124,14 @@ public class ClientService implements Runnable{
 
 		super();
 
-		isLoggedIn = false;
+		isLoggedIn = true;
 
 		mapClientReceivedDataPacket = new ConcurrentHashMap<>();
 
 		mapSentDataPacket = new ConcurrentHashMap<>();
 		mapReceivedDataPacket = new ConcurrentHashMap<>();
+
+		qSignupLoginLogoutDataPacket = new ConcurrentLinkedQueue<>();
 
 		try {
 
@@ -144,6 +152,8 @@ public class ClientService implements Runnable{
 			e.printStackTrace();
 		}
 
+		threadService = new Thread(this, "ClientStart");
+		threadService.start();
 	}
 
 	public static ClientService getInstance() {
@@ -161,13 +171,15 @@ public class ClientService implements Runnable{
 
 		sendPacketOnlineStatus();
 
+		resendDataPacketIfNoACKReceived();
+
 	}
 
-	public void login(String userName) {
+	public void login(String userName, String password) {
 
 		try {
 
-			client = new Client(userName);
+			client = new Client(userName, password);
 			DataPacket dataPacket = new DataPacket(client, DataPacket.ACTION_TYPE_LOGIN);
 
 			sendPacket(dataPacket);
@@ -177,10 +189,22 @@ public class ClientService implements Runnable{
 
 			e.printStackTrace();
 		}
+	}
+	
+	public void signup(String userName, String password) {
 
-		isLoggedIn = true;
-		threadService = new Thread(this, "ClientStart");
-		threadService.start();
+		try {
+
+			client = new Client(userName, password);
+			DataPacket dataPacket = new DataPacket(client, DataPacket.ACTION_TYPE_SIGNUP);
+
+			sendPacket(dataPacket);
+
+		} 
+		catch (IOException e) {
+
+			e.printStackTrace();
+		}
 	}
 
 	public void logout() {
@@ -198,6 +222,54 @@ public class ClientService implements Runnable{
 		}
 
 		isLoggedIn = false;
+	}
+
+	public void resendDataPacketIfNoACKReceived() {
+
+		threadResendDataPacketIfNoACKReceived = new Thread("ResendDataPacketIfNoACKReceived"){
+
+			@Override
+			public void run() {
+
+				while(isLoggedIn) {
+
+					try {
+
+						if(mapSentDataPacket.size() > 0) {
+
+							for(UUID sentDataPacketId : mapSentDataPacket.keySet()) {
+
+								DataPacket sentDataPacket = mapSentDataPacket.get(sentDataPacketId);
+
+								if(sentDataPacket.getTimestamp() - new Date().getTime() > 5000) {
+
+									sentDataPacket.setTimestamp(new Date().getTime());
+									sentDataPacket.incrementTimesResentDataPacket();
+									mapSentDataPacket.put(sentDataPacketId, sentDataPacket);
+
+									sendPacket(sentDataPacket);
+								}
+							}
+						}
+					} 
+					catch (IOException e) {
+
+						e.printStackTrace();
+					}
+
+					try {
+
+						Thread.sleep(500);
+					}
+					catch(Exception e) {
+
+						e.printStackTrace();
+					}
+				}
+			}
+		};
+
+		threadResendDataPacketIfNoACKReceived.start();
 	}
 
 	public void sendPacket(String messageType, String message, String toClientUserName) {
@@ -219,20 +291,6 @@ public class ClientService implements Runnable{
 			else if(DataPacket.MESSAGE_TYPE_BROADCAST_MESSAGE.equalsIgnoreCase(messageType)) {
 
 				dataPacket.setMessageType(DataPacket.MESSAGE_TYPE_BROADCAST_MESSAGE);
-				isValid = true;
-			}
-			else if(DataPacket.MESSAGE_TYPE_BROADCAST_IMAGE.equalsIgnoreCase(messageType)) {
-
-				dataPacket.setMessageType(DataPacket.MESSAGE_TYPE_BROADCAST_IMAGE);
-				System.out.println(message);
-				System.out.println(new File(message).exists());
-				BufferedImage bufferedImage = ImageIO.read(new File(message));
-				ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();        
-				ImageIO.write(bufferedImage, "jpg", byteArrayOutputStream);
-				byteArrayOutputStream.flush();
-				dataPacket.setByteImage(byteArrayOutputStream.toByteArray());
-
-
 				isValid = true;
 			}
 			else if(DataPacket.MESSAGE_TYPE_IMAGE_MESSAGE.equalsIgnoreCase(messageType)) {
@@ -332,6 +390,24 @@ public class ClientService implements Runnable{
 
 		switch(dataPacket.getAction()) {
 
+		case DataPacket.ACTION_TYPE_LOGIN_SUCCESS:
+			System.out.println("Received Login Packet Success!");
+			isLoggedIn = true;
+			qSignupLoginLogoutDataPacket.add(dataPacket);
+			break;
+
+		case DataPacket.ACTION_TYPE_LOGIN_FAILED:
+			System.out.println("Received Login Packet Failed!");
+			isLoggedIn = false;
+			qSignupLoginLogoutDataPacket.add(dataPacket);
+			break;
+			
+		case DataPacket.ACTION_TYPE_SIGNUP_FAILED:
+			System.out.println("Received Signup Packet Failed!");
+			isLoggedIn = false;
+			qSignupLoginLogoutDataPacket.add(dataPacket);
+			break;
+
 		case DataPacket.ACTION_TYPE_ONLINE:
 
 			Type type = new TypeToken<HashMap<String, Client>>(){}.getType();
@@ -388,18 +464,9 @@ public class ClientService implements Runnable{
 				addReceivedDataPacket(dataPacket);
 				break;
 
-			case DataPacket.MESSAGE_TYPE_BROADCAST_IMAGE:
-
-				addReceivedDataPacket(dataPacket);
-				break;
-
 			case DataPacket.MESSAGE_TYPE_IMAGE_MESSAGE:
 
 				addReceivedDataPacket(dataPacket);
-				break;
-
-			case DataPacket.MESSAGE_TYPE_MULTICAST_MESSAGE:
-
 				break;
 
 			}
@@ -469,8 +536,17 @@ public class ClientService implements Runnable{
 		if(dataPacket.getAction().equals(DataPacket.ACTION_TYPE_MESSAGE)) {
 			mapSentDataPacket.put(dataPacket.getId(), dataPacket);
 		}
+
 		sendPacketByUDP(dataPacket);
 
+	}
+
+	public ConcurrentLinkedQueue<DataPacket> getqSignupLoginLogoutDataPacket() {
+		return qSignupLoginLogoutDataPacket;
+	}
+
+	public void setqSignupLoginLogoutDataPacket(ConcurrentLinkedQueue<DataPacket> qSignupLoginLogoutDataPacket) {
+		this.qSignupLoginLogoutDataPacket = qSignupLoginLogoutDataPacket;
 	}
 
 

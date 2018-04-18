@@ -7,6 +7,7 @@ package chatclient;
 
 import com.nxkundu.client.service.ClientService;
 import com.nxkundu.server.bo.Client;
+import com.nxkundu.server.bo.DataPacket;
 
 /**
  *
@@ -14,12 +15,20 @@ import com.nxkundu.server.bo.Client;
  */
 public class Login extends javax.swing.JFrame {
 
+    private static Login loginScreen;
     /**
      * Creates new form Login
      */
-    public Login() {
+    private Login() {
         initComponents();
         loginEmail.grabFocus();
+    }
+    
+    public static Login getInstance() {
+        if(loginScreen == null) {
+            loginScreen = new Login();
+        }
+        return loginScreen;
     }
 
     /**
@@ -34,19 +43,21 @@ public class Login extends javax.swing.JFrame {
         jPanel1 = new javax.swing.JPanel();
         jLabel6 = new javax.swing.JLabel();
         jPanel2 = new javax.swing.JPanel();
-        jButton2 = new javax.swing.JButton();
+        btnSignup = new javax.swing.JButton();
         jLabel3 = new javax.swing.JLabel();
         jLabel4 = new javax.swing.JLabel();
-        jTextField2 = new javax.swing.JTextField();
-        jPasswordField2 = new javax.swing.JPasswordField();
+        signupEmail = new javax.swing.JTextField();
+        signupPassword = new javax.swing.JPasswordField();
         jLabel5 = new javax.swing.JLabel();
-        jTextField3 = new javax.swing.JTextField();
+        signupName = new javax.swing.JTextField();
+        signupErrorLabel = new javax.swing.JLabel();
         jPanel3 = new javax.swing.JPanel();
         jLabel1 = new javax.swing.JLabel();
         loginEmail = new javax.swing.JTextField();
         jLabel2 = new javax.swing.JLabel();
         loginPassword = new javax.swing.JPasswordField();
         buttonLogin = new javax.swing.JButton();
+        loginErrorLabel = new javax.swing.JLabel();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
 
@@ -74,15 +85,20 @@ public class Login extends javax.swing.JFrame {
 
         jPanel2.setBorder(javax.swing.BorderFactory.createTitledBorder(""));
 
-        jButton2.setText("Signup");
+        btnSignup.setText("Signup");
+        btnSignup.addMouseListener(new java.awt.event.MouseAdapter() {
+            public void mouseClicked(java.awt.event.MouseEvent evt) {
+                btnSignupMouseClicked(evt);
+            }
+        });
 
         jLabel3.setText("Password");
 
         jLabel4.setText("Email");
 
-        jTextField2.addActionListener(new java.awt.event.ActionListener() {
+        signupEmail.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
-                jTextField2ActionPerformed(evt);
+                signupEmailActionPerformed(evt);
             }
         });
 
@@ -95,7 +111,7 @@ public class Login extends javax.swing.JFrame {
             .addGroup(jPanel2Layout.createSequentialGroup()
                 .addContainerGap()
                 .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addComponent(jButton2, javax.swing.GroupLayout.DEFAULT_SIZE, 224, Short.MAX_VALUE)
+                    .addComponent(btnSignup, javax.swing.GroupLayout.DEFAULT_SIZE, 224, Short.MAX_VALUE)
                     .addGroup(jPanel2Layout.createSequentialGroup()
                         .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                             .addComponent(jLabel3)
@@ -103,9 +119,12 @@ public class Login extends javax.swing.JFrame {
                             .addComponent(jLabel4))
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                         .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                            .addComponent(jTextField2)
-                            .addComponent(jPasswordField2)
-                            .addComponent(jTextField3))))
+                            .addComponent(signupEmail)
+                            .addComponent(signupPassword)
+                            .addComponent(signupName)))
+                    .addGroup(jPanel2Layout.createSequentialGroup()
+                        .addComponent(signupErrorLabel)
+                        .addGap(0, 0, Short.MAX_VALUE)))
                 .addContainerGap())
         );
         jPanel2Layout.setVerticalGroup(
@@ -114,24 +133,26 @@ public class Login extends javax.swing.JFrame {
                 .addGap(37, 37, 37)
                 .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(jLabel4)
-                    .addComponent(jTextField2, javax.swing.GroupLayout.PREFERRED_SIZE, 32, javax.swing.GroupLayout.PREFERRED_SIZE))
+                    .addComponent(signupEmail, javax.swing.GroupLayout.PREFERRED_SIZE, 32, javax.swing.GroupLayout.PREFERRED_SIZE))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                 .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(jLabel3)
-                    .addComponent(jPasswordField2, javax.swing.GroupLayout.PREFERRED_SIZE, 32, javax.swing.GroupLayout.PREFERRED_SIZE))
+                    .addComponent(signupPassword, javax.swing.GroupLayout.PREFERRED_SIZE, 32, javax.swing.GroupLayout.PREFERRED_SIZE))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(jLabel5)
-                    .addComponent(jTextField3, javax.swing.GroupLayout.PREFERRED_SIZE, 32, javax.swing.GroupLayout.PREFERRED_SIZE))
-                .addGap(45, 45, 45)
-                .addComponent(jButton2, javax.swing.GroupLayout.PREFERRED_SIZE, 35, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(signupName, javax.swing.GroupLayout.PREFERRED_SIZE, 32, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addGap(11, 11, 11)
+                .addComponent(signupErrorLabel)
+                .addGap(18, 18, 18)
+                .addComponent(btnSignup, javax.swing.GroupLayout.PREFERRED_SIZE, 35, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addContainerGap())
         );
 
-        jButton2.getAccessibleContext().setAccessibleName("signupButton");
-        jTextField2.getAccessibleContext().setAccessibleName("signupEmail");
-        jPasswordField2.getAccessibleContext().setAccessibleName("signupPassword");
-        jTextField3.getAccessibleContext().setAccessibleName("signupName");
+        btnSignup.getAccessibleContext().setAccessibleName("signupButton");
+        signupEmail.getAccessibleContext().setAccessibleName("signupEmail");
+        signupPassword.getAccessibleContext().setAccessibleName("signupPassword");
+        signupName.getAccessibleContext().setAccessibleName("signupName");
 
         jPanel3.setBorder(javax.swing.BorderFactory.createTitledBorder(""));
         jPanel3.setPreferredSize(new java.awt.Dimension(225, 239));
@@ -168,19 +189,24 @@ public class Login extends javax.swing.JFrame {
         jPanel3.setLayout(jPanel3Layout);
         jPanel3Layout.setHorizontalGroup(
             jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, jPanel3Layout.createSequentialGroup()
+            .addGroup(jPanel3Layout.createSequentialGroup()
                 .addContainerGap()
-                .addGroup(jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
-                    .addComponent(buttonLogin, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                .addGroup(jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, jPanel3Layout.createSequentialGroup()
+                        .addGroup(jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
+                            .addComponent(buttonLogin, javax.swing.GroupLayout.DEFAULT_SIZE, 227, Short.MAX_VALUE)
+                            .addGroup(jPanel3Layout.createSequentialGroup()
+                                .addGroup(jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                                    .addComponent(jLabel1)
+                                    .addComponent(jLabel2))
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                                .addGroup(jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
+                                    .addComponent(loginPassword, javax.swing.GroupLayout.DEFAULT_SIZE, 135, Short.MAX_VALUE)
+                                    .addComponent(loginEmail))))
+                        .addContainerGap())
                     .addGroup(jPanel3Layout.createSequentialGroup()
-                        .addGroup(jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                            .addComponent(jLabel1)
-                            .addComponent(jLabel2))
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                        .addGroup(jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
-                            .addComponent(loginPassword, javax.swing.GroupLayout.DEFAULT_SIZE, 135, Short.MAX_VALUE)
-                            .addComponent(loginEmail))))
-                .addContainerGap())
+                        .addComponent(loginErrorLabel, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                        .addGap(44, 44, 44))))
         );
         jPanel3Layout.setVerticalGroup(
             jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -193,7 +219,9 @@ public class Login extends javax.swing.JFrame {
                 .addGroup(jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(jLabel2)
                     .addComponent(loginPassword, javax.swing.GroupLayout.PREFERRED_SIZE, 32, javax.swing.GroupLayout.PREFERRED_SIZE))
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 51, Short.MAX_VALUE)
+                .addGap(18, 18, 18)
+                .addComponent(loginErrorLabel)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                 .addComponent(buttonLogin, javax.swing.GroupLayout.PREFERRED_SIZE, 35, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addContainerGap())
         );
@@ -223,7 +251,7 @@ public class Login extends javax.swing.JFrame {
                 .addComponent(jPanel1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addComponent(jPanel2, javax.swing.GroupLayout.PREFERRED_SIZE, 0, Short.MAX_VALUE)
+                    .addComponent(jPanel2, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                     .addComponent(jPanel3, javax.swing.GroupLayout.DEFAULT_SIZE, 229, Short.MAX_VALUE))
                 .addContainerGap())
         );
@@ -243,29 +271,175 @@ public class Login extends javax.swing.JFrame {
         // TODO add your handling code here:
     }//GEN-LAST:event_loginEmailActionPerformed
 
-    private void jTextField2ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jTextField2ActionPerformed
+    private void signupEmailActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_signupEmailActionPerformed
         // TODO add your handling code here:
-    }//GEN-LAST:event_jTextField2ActionPerformed
+    }//GEN-LAST:event_signupEmailActionPerformed
 
     private void buttonLoginMouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_buttonLoginMouseClicked
         // TODO add your handling code here:
         
         String email = loginEmail.getText();
-        char[] password = loginPassword.getPassword();
+        String password = String.valueOf(loginPassword.getPassword());
         System.out.println(email + " " + password);
         
-        if(email.isEmpty() || password.length == 0) {
+        if(email.isEmpty() || password.length() == 0) {
+            
+            if(email.isEmpty()) {
+                loginErrorLabel.setText("Please Enter Email to login");
+            }
+            else if(password.length() == 0) {
+                loginErrorLabel.setText("Please Enter Password to login");
+            }
             return;
+        }
+        else {
+            
+            loginErrorLabel.setText("Loggin In !");
         }
         
         ClientService clientService = ClientService.getInstance();
-        clientService.login(email);
+        clientService.login(email, password);
         
-        Client client = new Client(email);
-        ChatScreen chatScreen = new ChatScreen(client, clientService);
-        this.setVisible(false);
-        chatScreen.setVisible(true);
+        Thread threadLogin = new Thread("LoginThread") {
+		
+            @Override
+            public void run() {
+                
+                int retry = 0;
+
+                while(true) {
+                    
+                    retry += 1;
+
+                    if(clientService.getqSignupLoginLogoutDataPacket().size() > 0) {
+                        DataPacket loginACKDataPacket = clientService.getqSignupLoginLogoutDataPacket().poll();
+                        System.out.println("Received Packet = " + loginACKDataPacket);
+                        clientService.getClient().setPassword("");
+                        switch (loginACKDataPacket.getAction()) {
+
+                        case DataPacket.ACTION_TYPE_LOGIN_SUCCESS:
+                            System.out.println("Login Success!");
+                            loginErrorLabel.setText(loginACKDataPacket.getMessage());
+                            
+                            Client client = clientService.getClient();
+                            ChatScreen chatScreen = new ChatScreen(client, clientService);
+                            chatScreen.setVisible(true);
+                            Login.getInstance().setVisible(false);
+                            break;
+
+                        case DataPacket.ACTION_TYPE_LOGIN_FAILED:
+                            
+                            System.out.println("Login Failed!");
+                            loginErrorLabel.setText(loginACKDataPacket.getMessage());
+                            break;
+                        }
+
+                        break;
+                    }
+
+                    try {
+
+                        Thread.sleep(500);
+                    }
+                    catch(Exception e) {
+                        e.printStackTrace();
+                    }
+                    
+                    if(retry % 5 == 0) {
+                        
+                        clientService.login(email, password);
+                    }
+
+                }
+            }
+
+        };
+        
+        threadLogin.start();
     }//GEN-LAST:event_buttonLoginMouseClicked
+
+    private void btnSignupMouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_btnSignupMouseClicked
+        // TODO add your handling code here:
+        
+        String email = signupEmail.getText();
+        String password = String.valueOf(signupPassword.getPassword());
+        System.out.println(email + " " + password);
+        
+        if(email.isEmpty() || password.length() == 0) {
+            
+            if(email.isEmpty()) {
+                signupErrorLabel.setText("Please Enter Email to login");
+            }
+            else if(password.length() == 0) {
+                signupErrorLabel.setText("Please Enter Password to login");
+            }
+            return;
+        }
+        else {
+            
+            signupErrorLabel.setText("Signning Up !");
+        }
+        
+        ClientService clientService = ClientService.getInstance();
+        clientService.signup(email, password);
+        
+        Thread signupThread = new Thread("SignupThread") {
+		
+            @Override
+            public void run() {
+                
+                int retry = 0;
+
+                while(true) {
+                    
+                    retry += 1;
+
+                    if(clientService.getqSignupLoginLogoutDataPacket().size() > 0) {
+                        DataPacket signupACKDataPacket = clientService.getqSignupLoginLogoutDataPacket().poll();
+                        System.out.println("Received Packet = " + signupACKDataPacket);
+                        clientService.getClient().setPassword("");
+                        switch (signupACKDataPacket.getAction()) {
+
+                        case DataPacket.ACTION_TYPE_LOGIN_SUCCESS:
+                            System.out.println("Signup Success!");
+                            signupErrorLabel.setText(signupACKDataPacket.getMessage());
+                            
+                            Client client = clientService.getClient();
+                            ChatScreen chatScreen = new ChatScreen(client, clientService);
+                            chatScreen.setVisible(true);
+                            Login.getInstance().setVisible(false);
+                            break;
+
+                        case DataPacket.ACTION_TYPE_LOGIN_FAILED:
+                            
+                            System.out.println("Signup Failed!");
+                            signupErrorLabel.setText(signupACKDataPacket.getMessage());
+                            break;
+                        }
+
+                        break;
+                    }
+
+                    try {
+
+                        Thread.sleep(500);
+                    }
+                    catch(Exception e) {
+                        e.printStackTrace();
+                    }
+                    
+                    if(retry % 5 == 0) {
+                        
+                        clientService.signup(email, password);
+                    }
+
+                }
+            }
+
+        };
+        
+        signupThread.start();
+    }//GEN-LAST:event_btnSignupMouseClicked
 
     /**
      * @param args the command line arguments
@@ -303,8 +477,8 @@ public class Login extends javax.swing.JFrame {
     }
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
+    private javax.swing.JButton btnSignup;
     private javax.swing.JButton buttonLogin;
-    private javax.swing.JButton jButton2;
     private javax.swing.JLabel jLabel1;
     private javax.swing.JLabel jLabel2;
     private javax.swing.JLabel jLabel3;
@@ -314,11 +488,13 @@ public class Login extends javax.swing.JFrame {
     private javax.swing.JPanel jPanel1;
     private javax.swing.JPanel jPanel2;
     private javax.swing.JPanel jPanel3;
-    private javax.swing.JPasswordField jPasswordField2;
-    private javax.swing.JTextField jTextField2;
-    private javax.swing.JTextField jTextField3;
     private javax.swing.JTextField loginEmail;
+    private javax.swing.JLabel loginErrorLabel;
     private javax.swing.JPasswordField loginPassword;
+    private javax.swing.JTextField signupEmail;
+    private javax.swing.JLabel signupErrorLabel;
+    private javax.swing.JTextField signupName;
+    private javax.swing.JPasswordField signupPassword;
     // End of variables declaration//GEN-END:variables
 
 }

@@ -445,7 +445,7 @@ public class ChatScreen extends javax.swing.JFrame implements Runnable{
     private void buttonLogoutMouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_buttonLogoutMouseClicked
         // TODO add your handling code here:
         clientService.logout();
-        Login login = new Login();
+        Login login = Login.getInstance();
         login.setVisible(true);
         this.setVisible(false);
     }//GEN-LAST:event_buttonLogoutMouseClicked

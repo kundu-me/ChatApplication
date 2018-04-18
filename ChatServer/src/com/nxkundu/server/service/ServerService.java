@@ -32,6 +32,7 @@ public class ServerService implements Runnable{
 	private Thread threadSend;
 	private Thread threadReceivePacketUDP;
 	private Thread threadBroadcastClientStatus;
+	private Thread threadResendDataPacketIfNoACKReceived;
 
 	private ConcurrentMap<String, Client> mapAllClients;
 
@@ -45,7 +46,7 @@ public class ServerService implements Runnable{
 		isService = false;
 
 		mapAllClients = new ConcurrentHashMap<>();
-		
+
 		mapSentDataPacket = new ConcurrentHashMap<>();
 		mapReceivedDataPacket = new ConcurrentHashMap<>();
 
@@ -94,6 +95,8 @@ public class ServerService implements Runnable{
 
 		broadcastClientStatus();
 
+		resendDataPacketIfNoACKReceived();
+
 	}
 
 	private void sendPacket() {
@@ -111,15 +114,25 @@ public class ServerService implements Runnable{
 
 							DataPacket dataPacket = qSendPacket.poll();
 
-							if((mapAllClients.containsKey(dataPacket.getToClient().getUserName()))
-									&& (mapAllClients.get(dataPacket.getToClient().getUserName())).isOnline()) {
+							if(dataPacket.getAction().equals(DataPacket.ACTION_TYPE_LOGIN_SUCCESS)
+									|| dataPacket.getAction().equals(DataPacket.ACTION_TYPE_LOGIN_FAILED)
+									|| dataPacket.getAction().equals(DataPacket.ACTION_TYPE_SIGNUP_FAILED)) {
 
+								System.out.println(dataPacket);
 								sendPacket(dataPacket);
 							}
 							else {
+								
+								if((mapAllClients.containsKey(dataPacket.getToClient().getUserName()))
+										&& (mapAllClients.get(dataPacket.getToClient().getUserName())).isOnline()) {
 
-								//TODO
-								//write to DB
+									sendPacket(dataPacket);
+								}
+								else {
+
+									//TODO
+									//write to DB
+								}
 							}
 
 						}
@@ -147,48 +160,146 @@ public class ServerService implements Runnable{
 
 	private void processReceivedDatagramPacket(DataPacket dataPacket, Client fromClient) {
 
-		dataPacket.setFromClient(fromClient);
+		System.out.println("Received Packet = " + dataPacket);
 		
+		dataPacket.setFromClient(fromClient);
+
 		switch(dataPacket.getAction()) {
 
 		case DataPacket.ACTION_TYPE_LOGIN:
 
 			fromClient.setLastSeenTimestamp(new Date().getTime());
 
-			mapAllClients.put(fromClient.getUserName(), fromClient);
+			String username = dataPacket.getFromClient().getUserName();
+			String password = dataPacket.getFromClient().getPassword();
 
-			updateClientOn(fromClient);
-			//sendClientStatus(false, fromClient);
-			sendClientStatus(true, fromClient);
+			boolean isLoginSuccess = false;
+			String loginMessage = "";
+			if(mapAllClients.get(username) != null) {
+				
+				isLoginSuccess = true;
+				loginMessage = "Login Successful";
+			}
+			else {
+				
+				isLoginSuccess = false;
+				loginMessage = "Failed! Email Not Registered";
+				fromClient.setLastSeenTimestamp(0);
+			}
+
+			Client serverToClientLoginACK = new Client(Server.SERVER_USERNAME);
+			DataPacket loginACKDataPacket = null;
+
+			if(isLoginSuccess) {
+
+				System.out.println("Login Success ... for " + fromClient);
+				mapAllClients.put(fromClient.getUserName(), fromClient);
+
+				loginACKDataPacket = new DataPacket(serverToClientLoginACK, DataPacket.ACTION_TYPE_LOGIN_SUCCESS);
+				loginACKDataPacket.setToClient(fromClient);
+				loginACKDataPacket.setMessage(loginMessage);
+			}
+			else {
+
+				System.out.println("Login Failed ... for " + fromClient);
+				loginACKDataPacket = new DataPacket(serverToClientLoginACK, DataPacket.ACTION_TYPE_LOGIN_FAILED);
+				loginACKDataPacket.setToClient(fromClient);
+				loginACKDataPacket.setMessage(loginMessage);
+			}
+
+			qSendPacket.add(loginACKDataPacket);
+
+			if(isLoginSuccess) {
+
+				updateClientOn(fromClient);
+				sendClientStatus(true, fromClient);
+			}
+			break;
+
+		case DataPacket.ACTION_TYPE_SIGNUP:
+
+			fromClient.setLastSeenTimestamp(new Date().getTime());
+
+			String usernameSignUp = dataPacket.getFromClient().getUserName();
+			String passwordSignUp = dataPacket.getFromClient().getPassword();
+
+			boolean isSignUpSuccess = false;
+			String signUpMessage = "";
+			
+			if(mapAllClients.get(usernameSignUp) == null) {
+				
+				isSignUpSuccess = true;
+				signUpMessage = "Signup Successful! Logging in";
+				mapAllClients.put(fromClient.getUserName(), fromClient);
+			}
+			else {
+				
+				isSignUpSuccess = false;
+				signUpMessage = "Failed! Email Exists";
+				fromClient.setLastSeenTimestamp(0);
+			}
+
+			Client serverToClientSignUpACK = new Client(Server.SERVER_USERNAME);
+			DataPacket signupACKDataPacket = null;
+
+			if(isSignUpSuccess) {
+
+				System.out.println("Signup Success ... for " + fromClient + " .. Loggin in..");
+
+				signupACKDataPacket = new DataPacket(serverToClientSignUpACK, DataPacket.ACTION_TYPE_LOGIN_SUCCESS);
+				signupACKDataPacket.setToClient(fromClient);
+				signupACKDataPacket.setMessage(signUpMessage);
+			}
+			else {
+
+				System.out.println("Signup Failed ... for " + fromClient);
+				signupACKDataPacket = new DataPacket(serverToClientSignUpACK, DataPacket.ACTION_TYPE_SIGNUP_FAILED);
+				signupACKDataPacket.setToClient(fromClient);
+				signupACKDataPacket.setMessage(signUpMessage);
+			}
+
+			qSendPacket.add(signupACKDataPacket);
+
+			if(isSignUpSuccess) {
+
+				updateClientOn(fromClient);
+				sendClientStatus(true, fromClient);
+			}
 			break;
 
 		case DataPacket.ACTION_TYPE_LOGOUT:
 
+			mapAllClients.remove(fromClient.getUserName());
+			
 			updateClientOff(fromClient);
-			//sendClientStatus(false, fromClient);
 			sendClientStatus(true, fromClient);
 			break;
 
 		case DataPacket.ACTION_TYPE_ONLINE:
 
 			fromClient.setLastSeenTimestamp(new Date().getTime());
-			mapAllClients.put(fromClient.getUserName(), fromClient);
+			
+			if(mapAllClients.get(fromClient.getUserName()) != null) {
+				
+				mapAllClients.put(fromClient.getUserName(), fromClient);
+			}
+			
 			break;
 
 		case DataPacket.ACTION_TYPE_ACK:
 
 
 			UUID dataPacketACKId = UUID.fromString(dataPacket.getMessage());
-			
+
 			if(mapSentDataPacket.containsKey(dataPacketACKId)) {
-				
+
 				mapSentDataPacket.remove(dataPacketACKId);
 			}
 			else {
-				
+
 				//Not Possible
 			}
-			
+
 			break;
 
 		case DataPacket.ACTION_TYPE_MESSAGE:
@@ -201,7 +312,7 @@ public class ServerService implements Runnable{
 			qSendPacket.add(dataPacketACK);
 
 			if(mapReceivedDataPacket.containsKey(dataPacket.getId())) {
-				
+
 				break;
 			}
 
@@ -222,35 +333,6 @@ public class ServerService implements Runnable{
 				break;
 
 			case DataPacket.MESSAGE_TYPE_BROADCAST_MESSAGE:
-
-				for(String key : mapAllClients.keySet()) {
-
-					Client toClient = mapAllClients.get(key);
-					if(toClient.getUserName().equalsIgnoreCase(fromClient.getUserName())) {
-						continue;
-					}
-					DataPacket dataPacketBroadCast;
-					try {
-
-						dataPacketBroadCast = (DataPacket) dataPacket.clone();
-						dataPacketBroadCast.setFromClient(fromClient);
-						dataPacketBroadCast.setToClient(toClient);
-						qSendPacket.add(dataPacketBroadCast);
-					} 
-					catch (CloneNotSupportedException e) {
-
-						e.printStackTrace();
-					}
-					catch (Exception e) {
-
-						e.printStackTrace();
-					}
-
-				}
-
-				break;
-
-			case DataPacket.MESSAGE_TYPE_BROADCAST_IMAGE:
 
 				for(String key : mapAllClients.keySet()) {
 
@@ -441,7 +523,7 @@ public class ServerService implements Runnable{
 		if(dataPacket.getAction().equals(DataPacket.ACTION_TYPE_MESSAGE)) {
 			mapSentDataPacket.put(dataPacket.getId(), dataPacket);
 		}
-		
+
 		sendPacketByUDP(dataPacket);
 
 	}
@@ -460,5 +542,46 @@ public class ServerService implements Runnable{
 
 	public void setMapReceivedDataPacket(ConcurrentMap<UUID, DataPacket> mapReceivedDataPacket) {
 		this.mapReceivedDataPacket = mapReceivedDataPacket;
+	}
+
+	public void resendDataPacketIfNoACKReceived() {
+
+		threadResendDataPacketIfNoACKReceived = new Thread("ResendDataPacketIfNoACKReceived"){
+
+			@Override
+			public void run() {
+
+				while(isService) {
+
+					if(mapSentDataPacket.size() > 0) {
+
+						for(UUID sentDataPacketId : mapSentDataPacket.keySet()) {
+
+							DataPacket sentDataPacket = mapSentDataPacket.get(sentDataPacketId);
+
+							if(sentDataPacket.getTimestamp() - new Date().getTime() > 5000) {
+
+								sentDataPacket.setTimestamp(new Date().getTime());
+								sentDataPacket.incrementTimesResentDataPacket();
+								mapSentDataPacket.put(sentDataPacketId, sentDataPacket);
+
+								qSendPacket.add(sentDataPacket);
+							}
+						}
+					}
+
+					try {
+
+						Thread.sleep(500);
+					}
+					catch(Exception e) {
+
+						e.printStackTrace();
+					}
+				}
+			}
+		};
+
+		threadResendDataPacketIfNoACKReceived.start();
 	}
 }

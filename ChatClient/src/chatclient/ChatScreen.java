@@ -426,9 +426,9 @@ public class ChatScreen extends javax.swing.JFrame implements Runnable{
         
             if(toClient.equals(DataPacket.MESSAGE_TYPE_BROADCAST_MESSAGE)) {
 
-                clientService.sendPacket(DataPacket.MESSAGE_TYPE_BROADCAST_IMAGE, file.getPath(), toClient);
-                
-                mapModelChatHistory.get(toClient).addElement(new DisplayData("Me: ", new ImageIcon(file.getPath())));
+//                clientService.sendPacket(DataPacket.MESSAGE_TYPE_BROADCAST_IMAGE, file.getPath(), toClient);
+//                
+//                mapModelChatHistory.get(toClient).addElement(new DisplayData("Me: ", new ImageIcon(file.getPath())));
             }
             else {
                 
@@ -502,7 +502,7 @@ public class ChatScreen extends javax.swing.JFrame implements Runnable{
             @Override
             public void run() {
 
-		while(clientService.isLoggedIn()) {
+		while(ClientService.isLoggedIn) {
 
                     updateFriendList();
 
@@ -583,7 +583,7 @@ public class ChatScreen extends javax.swing.JFrame implements Runnable{
             @Override
             public void run() {
                 
-                while(clientService.isLoggedIn()) {
+                while(ClientService.isLoggedIn) {
   
                     String fromClient = labelChatFriend.getText();
                     
@@ -655,7 +655,7 @@ public class ChatScreen extends javax.swing.JFrame implements Runnable{
             @Override
             public void run() {
                 
-                while(clientService.isLoggedIn()) {
+                while(ClientService.isLoggedIn) {
                     
                     Map<String, ConcurrentLinkedQueue<DataPacket>> mapClientReceivedDataPacket = null;
                     mapClientReceivedDataPacket = clientService.getMapClientReceivedDataPacket();

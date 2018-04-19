@@ -45,7 +45,7 @@
               <EmptySpace max="-2" attributes="0"/>
               <Group type="103" groupAlignment="0" attributes="0">
                   <Component id="jPanel2" max="32767" attributes="0"/>
-                  <Component id="jPanel3" pref="229" max="32767" attributes="0"/>
+                  <Component id="jPanel3" pref="235" max="32767" attributes="0"/>
               </Group>
               <EmptySpace max="-2" attributes="0"/>
           </Group>
@@ -206,6 +206,9 @@
           </AccessibilityProperties>
         </Component>
         <Component class="javax.swing.JLabel" name="signupErrorLabel">
+          <Properties>
+            <Property name="text" type="java.lang.String" value="New User PleaseSignup!"/>
+          </Properties>
         </Component>
       </SubComponents>
     </Container>
@@ -265,9 +268,9 @@
                       <Component id="jLabel2" alignment="3" min="-2" max="-2" attributes="0"/>
                       <Component id="loginPassword" alignment="3" min="-2" pref="32" max="-2" attributes="0"/>
                   </Group>
-                  <EmptySpace type="separate" max="-2" attributes="0"/>
-                  <Component id="loginErrorLabel" min="-2" max="-2" attributes="0"/>
                   <EmptySpace max="32767" attributes="0"/>
+                  <Component id="loginErrorLabel" min="-2" max="-2" attributes="0"/>
+                  <EmptySpace type="separate" max="-2" attributes="0"/>
                   <Component id="buttonLogin" min="-2" pref="35" max="-2" attributes="0"/>
                   <EmptySpace max="-2" attributes="0"/>
               </Group>
@@ -314,6 +317,9 @@
           </Events>
         </Component>
         <Component class="javax.swing.JLabel" name="loginErrorLabel">
+          <Properties>
+            <Property name="text" type="java.lang.String" value="Returning User Please Login!"/>
+          </Properties>
         </Component>
       </SubComponents>
     </Container>

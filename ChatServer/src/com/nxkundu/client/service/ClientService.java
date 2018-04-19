@@ -35,7 +35,7 @@ public class ClientService implements Runnable{
 	private Client client;
 
 	private Thread threadService;
-	private boolean isLoggedIn;
+	public static boolean isLoggedIn;
 
 	private Thread threadReceivePacketUDP;
 	private Thread threadOnlineStatus;
@@ -51,7 +51,7 @@ public class ClientService implements Runnable{
 	private ConcurrentLinkedQueue<DataPacket> qSignupLoginLogoutDataPacket;
 
 
-	
+
 
 	public ConcurrentMap<UUID, DataPacket> getMapSentDataPacket() {
 		return mapSentDataPacket;
@@ -94,14 +94,6 @@ public class ClientService implements Runnable{
 		this.client = client;
 	}
 
-	public boolean isLoggedIn() {
-		return isLoggedIn;
-	}
-
-	public void setLoggedIn(boolean isLoggedIn) {
-		this.isLoggedIn = isLoggedIn;
-	}
-
 	public static ClientService getClientService() {
 		return clientService;
 	}
@@ -123,8 +115,8 @@ public class ClientService implements Runnable{
 	private ClientService() {
 
 		super();
-
-		isLoggedIn = true;
+		
+		isLoggedIn = false;
 
 		mapClientReceivedDataPacket = new ConcurrentHashMap<>();
 
@@ -161,6 +153,8 @@ public class ClientService implements Runnable{
 		if(clientService == null) {
 			clientService = new ClientService();
 		}
+		
+		isLoggedIn = true;
 		return clientService;
 	}
 
@@ -190,7 +184,7 @@ public class ClientService implements Runnable{
 			e.printStackTrace();
 		}
 	}
-	
+
 	public void signup(String userName, String password) {
 
 		try {
@@ -231,30 +225,33 @@ public class ClientService implements Runnable{
 			@Override
 			public void run() {
 
-				while(isLoggedIn) {
+				while(true) {
 
-					try {
+					if(isLoggedIn) {
 
-						if(mapSentDataPacket.size() > 0) {
+						try {
 
-							for(UUID sentDataPacketId : mapSentDataPacket.keySet()) {
+							if(mapSentDataPacket.size() > 0) {
 
-								DataPacket sentDataPacket = mapSentDataPacket.get(sentDataPacketId);
+								for(UUID sentDataPacketId : mapSentDataPacket.keySet()) {
 
-								if(sentDataPacket.getTimestamp() - new Date().getTime() > 5000) {
+									DataPacket sentDataPacket = mapSentDataPacket.get(sentDataPacketId);
 
-									sentDataPacket.setTimestamp(new Date().getTime());
-									sentDataPacket.incrementTimesResentDataPacket();
-									mapSentDataPacket.put(sentDataPacketId, sentDataPacket);
+									if(sentDataPacket.getTimestamp() - new Date().getTime() > 5000) {
 
-									sendPacket(sentDataPacket);
+										sentDataPacket.setTimestamp(new Date().getTime());
+										sentDataPacket.incrementTimesResentDataPacket();
+										mapSentDataPacket.put(sentDataPacketId, sentDataPacket);
+
+										sendPacket(sentDataPacket);
+									}
 								}
 							}
-						}
-					} 
-					catch (IOException e) {
+						} 
+						catch (IOException e) {
 
-						e.printStackTrace();
+							e.printStackTrace();
+						}
 					}
 
 					try {
@@ -265,6 +262,7 @@ public class ClientService implements Runnable{
 
 						e.printStackTrace();
 					}
+
 				}
 			}
 		};
@@ -348,25 +346,28 @@ public class ClientService implements Runnable{
 			@Override
 			public void run() {
 
-				while(isLoggedIn) {
+				while(true) {
 
-					byte[] data = new byte[1024*60];
-					DatagramPacket datagramPacket = new DatagramPacket(data, data.length);
+					if(isLoggedIn) {
 
-					try {
+						byte[] data = new byte[1024*60];
+						DatagramPacket datagramPacket = new DatagramPacket(data, data.length);
 
-						server.getDatagramSocket().receive(datagramPacket);
+						try {
 
-						String received = new String(datagramPacket.getData(), 0, datagramPacket.getLength());
-						DataPacket dataPacket = new Gson().fromJson(received, DataPacket.class);
-						System.out.println(dataPacket);
+							server.getDatagramSocket().receive(datagramPacket);
 
-						processReceivedDatagramPacket(dataPacket);
+							String received = new String(datagramPacket.getData(), 0, datagramPacket.getLength());
+							DataPacket dataPacket = new Gson().fromJson(received, DataPacket.class);
+							System.out.println(dataPacket);
 
-					} 
-					catch (IOException e) {
+							processReceivedDatagramPacket(dataPacket);
 
-						e.printStackTrace();
+						} 
+						catch (IOException e) {
+
+							e.printStackTrace();
+						}
 					}
 
 					try {
@@ -401,7 +402,7 @@ public class ClientService implements Runnable{
 			isLoggedIn = false;
 			qSignupLoginLogoutDataPacket.add(dataPacket);
 			break;
-			
+
 		case DataPacket.ACTION_TYPE_SIGNUP_FAILED:
 			System.out.println("Received Signup Packet Failed!");
 			isLoggedIn = false;
@@ -492,20 +493,22 @@ public class ClientService implements Runnable{
 			@Override
 			public void run() {
 
-				while(isLoggedIn) {
+				while(true) {
 
-					try {
+					if(isLoggedIn) {
+						
+						try {
 
-						DataPacket dataPacket = new DataPacket(client, DataPacket.ACTION_TYPE_ONLINE);
+							DataPacket dataPacket = new DataPacket(client, DataPacket.ACTION_TYPE_ONLINE);
 
-						sendPacket(dataPacket);
+							sendPacket(dataPacket);
 
-					} 
-					catch (IOException e) {
+						} 
+						catch (IOException e) {
 
-						e.printStackTrace();
+							e.printStackTrace();
+						}
 					}
-
 					try {
 
 						Thread.sleep(4000);

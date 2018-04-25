@@ -11,6 +11,13 @@ import javax.swing.ImageIcon;
 /**
  *
  * @author nxkundu
+ * 
+ * @email nxk161830@utdallas.edu
+ * @name Nirmallya Kundu
+ * 
+ * This class is used to display the 
+ * SENT/RECEIVED Messages of the client(s)
+ * to the UI
  */
 public class DisplayData {
     

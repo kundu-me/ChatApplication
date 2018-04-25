@@ -1,5 +1,9 @@
 package com.nxkundu.server.service;
 
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.FileReader;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.InetAddress;
@@ -20,15 +24,131 @@ import com.nxkundu.server.bo.Server;
 /**
  * 
  * @author nxkundu
+ * 
+ * @email nxk161830@utdallas.edu
+ * @name Nirmallya Kundu
+ * 
+ * ServerService - This service is initialized on the Server Side
+ * When the Server is started
+ * 
+ * 1> startServer()
+ * - This method starts the server
+ * based on the credentials on the Server object
+ * 
+ * 2> sendPacket() 
+ * - This method runs the thread threadSend and 
+ * continuously send DataPacket that were added to the Queue qSendPacket 
+ * to the respective client (toClient Address in the DataPacket)
+ * - 
+ * 
+ * 3> processReceivedDatagramPacket()
+ * - This method takes the action on the 
+ * received DataPacket based on the action field in the DataPacket
+ * 
+ * 
+ * 4> sendClientStatus() 
+ * - This method sends to the client(s)
+ * the list of all the clients
+ * Who are ONLINE and who are OFFLINE
+ * 
+ * 5> broadcastClientStatus()
+ * - This method runs the thread threadBroadcastClientStatus and 
+ * continuously send Online DataPacket (containing mapAllClients)
+ * to all the clients to notify all that the client who are ONLINE and who are OFFLINE. 
+ * 
+ * 6> recievePacketUDP()
+ * - This method runs the thread threadReceivePacketUDP
+ * and continuously receives UDP DataPacket from all the logged in client
+ * and process them to find the content of the packet and perform the necessary action
+ * 
+ * 7> sendPacketByUDP()
+ * - This methods sends the DataPacket to the 
+ * respective client based on UDP DatagramPacket
+ * the DataPacket contains the address of the ToClient
  *
+ * 
+ * 8> resendDataPacketIfNoACKReceived()
+ * - This method runs the 
+ * thread threadResendDataPacketIfNoACKReceived 
+ * which Resends the data for which no ACK is received 
+ * from the respective Client after a predefined amount of time
+ * 
+ * 9> updateClientOn()
+ * - When the client Comes ONLINE
+ * read all the messages from the Database
+ * that were sent to the client while they were OFFLINE
+ * 
+ * 10> updateClientOff()
+ * - When the client goes OFFLINE
+ * write all the messages to the Database
+ * that were sent and received by the client 
+ * while they were ONLINE
+ * 11> writeToFile()
+ * - This method write to the file
+ * all the user credentials that is in the mapUserCred
+ * 
+ * 12> readFromFile()
+ * - This method reads from the file
+ * all the user credentials that were saved
+ * 
  */
 public class ServerService implements Runnable{
 
+	/*
+	 * private Server server - holds the information about the server
+	 * 
+	 * private boolean isService - when the server starts this flag is set to true
+	 * and as long as the server is in service this holds True
+	 * 
+	 * private Thread threadService - This is the main thread which runs on the Server Side
+	 * 
+	 * private Thread threadSend- This thread continuously sends 
+	 * DataPacket to all clients based on the ToClient address on the DataPacket
+	 * 
+	 * private Thread threadReceivePacketUDP - This thread continuously receives 
+	 * UDP DataPacket from all clients and process them to find the content of the 
+	 * packet and perform the necessary action
+	 * 
+	 * private Thread threadBroadcastClientStatus - This thread continuously  
+	 * Broadcast the Map of all the clients (ONLINE, OFFLINE) in a 
+	 * DataPacket to all the logged in clients 
+	 * 
+	 * private Thread threadResendDataPacketIfNoACKReceived - This thread Resends the data for which no ACK 
+	 * is received from the client the DataPacket was sent, after a predefined amount of time
+	 * 
+	 * private ConcurrentMap<String, Client> mapAllClients - This map stores the list of all clients 
+	 * this is basically from where we the ONLINE clients and OFFLINE clients are stored
+	 * 
+	 * private ConcurrentLinkedQueue<DataPacket> qSendPacket - Whenever the server wants to send or forward 
+	 * or broadcast a message it adds a DataPacket to this queue
+	 * (containing the ToClient and FromClient Address)
+	 * 
+	 * private ConcurrentMap<UUID, DataPacket> mapSentDataPacket - This map stores all the DataPackets 
+	 * that was sent to the client, and when the server receives the ACK for the DataPacket, 
+	 * the respective DataPacket is removed from the map
+	 * 
+	 * private ConcurrentMap<UUID, DataPacket> mapBufferedDataPacket- This map stores all the DataPackets
+	 * that was to be sent to a client but the client is offline
+	 * 
+	 * private ConcurrentMap<UUID, DataPacket> mapReceivedDataPacket - This map stores all the DataPackets
+	 * received from the client so that the server can send ACK to the respective client that it has 
+	 * successfully received the DataPacket
+	 * 
+	 * private ConcurrentMap<String, String> mapUserCred - This map stores the user credentials
+	 * This map is filled when a client sign up
+	 * And when a client logs in this map is referred 
+	 * to verify the user credentials and allow them to login
+	 * 
+	 * private static final String FILENAME_USER_CREDENTIALS = "UserCred.txt"
+	 * This variable stores the file name which is used to write the 
+	 * user credentials to the file system
+	 * 
+	 */
+	
 	private Server server;
-
-	private Thread threadService;
 	private boolean isService;
 
+	private Thread threadService;
 	private Thread threadSend;
 	private Thread threadReceivePacketUDP;
 	private Thread threadBroadcastClientStatus;
@@ -39,8 +159,15 @@ public class ServerService implements Runnable{
 	private ConcurrentLinkedQueue<DataPacket> qSendPacket;
 
 	private ConcurrentMap<UUID, DataPacket> mapSentDataPacket;
+	private ConcurrentMap<UUID, DataPacket> mapBufferedDataPacket;
 	private ConcurrentMap<UUID, DataPacket> mapReceivedDataPacket;
+	
+	private ConcurrentMap<String, String> mapUserCred;
+	
+	private static final String FILENAME_USER_CREDENTIALS = "UserCred.txt";
 
+	/****************************** Constructors ******************************/
+	
 	public ServerService(){
 
 		isService = false;
@@ -48,14 +175,33 @@ public class ServerService implements Runnable{
 		mapAllClients = new ConcurrentHashMap<>();
 
 		mapSentDataPacket = new ConcurrentHashMap<>();
+		mapBufferedDataPacket = new ConcurrentHashMap<>();
 		mapReceivedDataPacket = new ConcurrentHashMap<>();
 
 		qSendPacket = new ConcurrentLinkedQueue<>();
+		
+		mapUserCred = new ConcurrentHashMap<>();
 	}
+	
+	/****************************** Object Methods ******************************/
 
+	/**
+	 * startServer() - This method starts the server
+	 * based on the credentials on the Server object
+	 * 
+	 */
 	public void startServer() {
 
 		System.out.println("Starting Server ...");
+		
+		/*
+		 * The user credentials are read from the 
+		 * file FILENAME_USER_CREDENTIALS when the server starts
+		 */
+		readFromFile();
+		
+		System.out.println("List of Regeistered User: ");
+		System.out.println(mapUserCred);
 
 		try {
 
@@ -89,16 +235,42 @@ public class ServerService implements Runnable{
 
 		isService = true;
 
+		/*
+		 * recievePacketUDP() - This method runs the thread threadReceivePacketUDP
+		 * and continuously receives UDP DataPacket from all the logged in client
+		 * and process them to find the content of the packet and perform the necessary action
+		 */
 		recievePacketUDP();
 
+		/*
+		 * sendPacket() - This method runs the thread threadSend and 
+		 * continuously send DataPacket that were added to the Queue qSendPacket 
+		 * to the respective client (toClient Address in the DataPacket)
+		 */ 
 		sendPacket();
 
+		/*
+		 * broadcastClientStatus() - This method runs the thread threadBroadcastClientStatus and 
+		 * continuously send Online DataPacket (containing mapAllClients)
+		 * to all the clients to notify all that the client who are ONLINE and who are OFFLINE. 
+		 */ 
 		broadcastClientStatus();
 
+		/*
+		 * resendDataPacketIfNoACKReceived() - This method runs the 
+		 * thread threadResendDataPacketIfNoACKReceived 
+		 * which Resends the data for which no ACK is received 
+		 * from the respective Client after a predefined amount of time
+		 */
 		resendDataPacketIfNoACKReceived();
 
 	}
 
+	/**
+	 * sendPacket() - This method runs the thread threadSend and 
+	 * continuously send DataPacket that were added to the Queue qSendPacket 
+	 * to the respective client (toClient Address in the DataPacket)
+	 */ 
 	private void sendPacket() {
 
 		threadSend = new Thread("SendPacket"){
@@ -130,8 +302,20 @@ public class ServerService implements Runnable{
 								}
 								else {
 
-									//TODO
-									//write to DB
+									mapBufferedDataPacket.put(dataPacket.getId(), dataPacket);
+									System.out.println("Buffered Packets : " + mapBufferedDataPacket);
+									//mapSentDataPacket.put(dataPacket.getId(), dataPacket);
+									
+									//TODO WRITE TO DB
+									
+									/*
+									 * When the Client is OFFLINE
+									 * Add the Message to the Database
+									 * So that when the client comes ONLINE the next time
+									 * All the messages that the client received while offline
+									 * can be viewed by them
+									 *  
+									 */
 								}
 							}
 
@@ -157,12 +341,16 @@ public class ServerService implements Runnable{
 		threadSend.start();
 	}
 
-
+	/**
+	 * processReceivedDatagramPacket() - This method takes the action on the 
+	 * received DataPacket based on the action field in the DataPacket
+	 * 
+	 * @param dataPacket
+	 * @param fromClient
+	 */
 	private void processReceivedDatagramPacket(DataPacket dataPacket, Client fromClient) {
 
 		System.out.println("Received Packet = " + dataPacket);
-		
-		dataPacket.setFromClient(fromClient);
 
 		switch(dataPacket.getAction()) {
 
@@ -175,18 +363,26 @@ public class ServerService implements Runnable{
 
 			boolean isLoginSuccess = false;
 			String loginMessage = "";
-			if(mapAllClients.get(username) != null) {
+			if(mapAllClients.get(username) != null && mapUserCred.get(username).equals(password)) {
 				
 				isLoginSuccess = true;
 				loginMessage = "Login Successful";
 			}
-			else {
+			else if(mapAllClients.get(username) == null) {
 				
 				isLoginSuccess = false;
 				loginMessage = "Failed! Email Not Registered";
 				fromClient.setLastSeenTimestamp(0);
 			}
+			else if(mapAllClients.get(username) != null && mapUserCred.get(username).equals(password) == false) {
+				
+				isLoginSuccess = false;
+				loginMessage = "Failed! Incorrect Password";
+				fromClient.setLastSeenTimestamp(0);
+			}
 
+			fromClient.setPassword("");
+			
 			Client serverToClientLoginACK = new Client(Server.SERVER_USERNAME);
 			DataPacket loginACKDataPacket = null;
 
@@ -222,7 +418,7 @@ public class ServerService implements Runnable{
 
 			String usernameSignUp = dataPacket.getFromClient().getUserName();
 			String passwordSignUp = dataPacket.getFromClient().getPassword();
-
+			
 			boolean isSignUpSuccess = false;
 			String signUpMessage = "";
 			
@@ -231,6 +427,9 @@ public class ServerService implements Runnable{
 				isSignUpSuccess = true;
 				signUpMessage = "Signup Successful! Logging in";
 				mapAllClients.put(fromClient.getUserName(), fromClient);
+				mapUserCred.put(usernameSignUp, passwordSignUp);
+				
+				writeToFile();
 			}
 			else {
 				
@@ -239,6 +438,8 @@ public class ServerService implements Runnable{
 				fromClient.setLastSeenTimestamp(0);
 			}
 
+			fromClient.setPassword("");
+			
 			Client serverToClientSignUpACK = new Client(Server.SERVER_USERNAME);
 			DataPacket signupACKDataPacket = null;
 
@@ -380,18 +581,60 @@ public class ServerService implements Runnable{
 
 	}
 
+	/**
+	 * 
+	 * updateClientOn() - 
+	 * 
+	 * When the client Comes ONLINE
+	 * read all the messages from the Database
+	 * that were sent to the client while they were OFFLINE
+	 * 
+	 * @param client
+	 */
 	private void updateClientOn(Client client) {
 
 		System.out.println("Client Logged In : " + client.toString());
-		//TODO handle 
+		//TODO handle when the Client comes ONLINE
+		
+		/*
+		 * When the client Comes ONLINE
+		 * read all the messages from the Database
+		 * that were sent to the client while they were OFFLINE
+		 */
 	}
 
+	/**
+	 * 
+	 * updateClientOff() - 
+	 * When the client goes OFFLINE
+	 * write all the messages to the Database
+	 * that were sent and received by the client 
+	 * while they were ONLINE
+	 * 
+	 * @param client
+	 */
 	private void updateClientOff(Client client) {
 
 		System.out.println("Client Logged Out : " + client.toString());
-		//TODO handle 
+		//TODO handle when the Client comes OFFLINE
+		
+		/*
+		 * When the client goes OFFLINE
+		 * write all the messages to the Database
+		 * that were sent and received by the client 
+		 * while they were ONLINE
+		 */
 	}
 
+	/**
+	 * sendClientStatus() -
+	 * This method sends to the client(s)
+	 * the list of all the clients
+	 * Who are ONLINE and who are OFFLINE
+	 * 
+	 * @param isSendToAllClient
+	 * @param specificClient
+	 */
 	public void sendClientStatus(boolean isSendToAllClient, Client specificClient) {
 
 		Client severToClient = new Client(Server.SERVER_USERNAME);
@@ -423,6 +666,13 @@ public class ServerService implements Runnable{
 
 	}
 
+	/**
+	 * 
+	 * broadcastClientStatus() - This method runs the thread threadBroadcastClientStatus and 
+	 * continuously send Online DataPacket (containing mapAllClients)
+	 * to all the clients to notify all that the client who are ONLINE and who are OFFLINE. 
+	 * 
+	 */ 
 	private void broadcastClientStatus() {
 
 		threadBroadcastClientStatus = new Thread("BroadcastClientStatus"){
@@ -450,6 +700,12 @@ public class ServerService implements Runnable{
 		threadBroadcastClientStatus.start();
 	}
 
+	/**
+	 * recievePacketUDP() - This method runs the thread threadReceivePacketUDP
+	 * and continuously receives UDP DataPacket from all the logged in client
+	 * and process them to find the content of the packet and perform the necessary action
+	 * 
+	 */
 	private void recievePacketUDP() {
 
 		threadReceivePacketUDP = new Thread("RecievePacketUDP"){
@@ -507,6 +763,14 @@ public class ServerService implements Runnable{
 		threadReceivePacketUDP.start();
 	}
 
+	/**
+	 * sendPacketByUDP() - This methods sends the DataPacket to the 
+	 * respective client based on UDP DatagramPacket
+	 * the DataPacket contains the address of the ToClient
+	 * 
+	 * @param dataPacket
+	 * @throws IOException
+	 */
 	public void sendPacketByUDP(DataPacket dataPacket) throws IOException {
 
 		InetAddress inetAddress = dataPacket.getToClient().getInetAddress();
@@ -518,6 +782,13 @@ public class ServerService implements Runnable{
 
 	}
 
+	/**
+	 * sendPacket() - This method decides on
+	 * which method to use to send the DataPacket to the client
+	 * 
+	 * @param dataPacket
+	 * @throws IOException
+	 */
 	public void sendPacket(DataPacket dataPacket) throws IOException {
 
 		if(dataPacket.getAction().equals(DataPacket.ACTION_TYPE_MESSAGE)) {
@@ -528,22 +799,13 @@ public class ServerService implements Runnable{
 
 	}
 
-	public ConcurrentMap<UUID, DataPacket> getMapSentDataPacket() {
-		return mapSentDataPacket;
-	}
-
-	public void setMapSentDataPacket(ConcurrentMap<UUID, DataPacket> mapSentDataPacket) {
-		this.mapSentDataPacket = mapSentDataPacket;
-	}
-
-	public ConcurrentMap<UUID, DataPacket> getMapReceivedDataPacket() {
-		return mapReceivedDataPacket;
-	}
-
-	public void setMapReceivedDataPacket(ConcurrentMap<UUID, DataPacket> mapReceivedDataPacket) {
-		this.mapReceivedDataPacket = mapReceivedDataPacket;
-	}
-
+	/**
+	 * resendDataPacketIfNoACKReceived() - This method runs the 
+	 * thread threadResendDataPacketIfNoACKReceived 
+	 * which Resends the data for which no ACK is received 
+	 * from the respective Client after a predefined amount of time
+	 * 
+	 */
 	public void resendDataPacketIfNoACKReceived() {
 
 		threadResendDataPacketIfNoACKReceived = new Thread("ResendDataPacketIfNoACKReceived"){
@@ -583,5 +845,78 @@ public class ServerService implements Runnable{
 		};
 
 		threadResendDataPacketIfNoACKReceived.start();
+	}
+	
+	/**
+	 * readFromFile() - 
+	 * This method write to the file
+	 * all the user credentials that is in the mapUserCred
+	 */
+	private synchronized void writeToFile() {
+
+		try (BufferedWriter bwBufferedWriter = new BufferedWriter(new FileWriter(FILENAME_USER_CREDENTIALS))) {
+
+			for(String username : mapUserCred.keySet()) {
+				
+				String content = username + "\t" + mapUserCred.get(username);
+
+				bwBufferedWriter.write(content);
+				bwBufferedWriter.newLine();
+			}
+			System.out.println("Write Successfully Completed");
+
+		} catch (IOException e) {
+
+			e.printStackTrace();
+
+		}
+
+	}
+	
+	/**
+	 * readFromFile() - 
+	 * This method reads from the file
+	 * all the user credentials that were saved
+	 */
+	private synchronized void readFromFile() {
+
+		try (BufferedReader bufferedReader = new BufferedReader(new FileReader(FILENAME_USER_CREDENTIALS))) {
+
+			String strCurrentLine;
+
+			while ((strCurrentLine = bufferedReader.readLine()) != null) {
+				
+				String[] arrCurrentLine = strCurrentLine.split("\t");
+				
+				String userName = arrCurrentLine[0];
+				String password = arrCurrentLine[1];
+				
+				Client savedClient = new Client(userName);
+				mapAllClients.put(userName, savedClient);
+				mapUserCred.put(userName, password);
+			}
+
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+
+	}
+	
+	/****************************** Getters Setters ******************************/
+	
+	public ConcurrentMap<UUID, DataPacket> getMapSentDataPacket() {
+		return mapSentDataPacket;
+	}
+
+	public void setMapSentDataPacket(ConcurrentMap<UUID, DataPacket> mapSentDataPacket) {
+		this.mapSentDataPacket = mapSentDataPacket;
+	}
+
+	public ConcurrentMap<UUID, DataPacket> getMapReceivedDataPacket() {
+		return mapReceivedDataPacket;
+	}
+
+	public void setMapReceivedDataPacket(ConcurrentMap<UUID, DataPacket> mapReceivedDataPacket) {
+		this.mapReceivedDataPacket = mapReceivedDataPacket;
 	}
 }

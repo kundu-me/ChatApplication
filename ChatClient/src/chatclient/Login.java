@@ -12,6 +12,15 @@ import com.nxkundu.server.bo.DataPacket;
 /**
  *
  * @author nxkundu
+ * 
+ * @email nxk161830@utdallas.edu
+ * @name Nirmallya Kundu
+ * 
+ * LOGIN/SIGNUP SCREEN UI 
+ * 
+ * This class contains the main LOGIN/SIGNUP screen 
+ * WHERE the First time user can SIGNUP
+ * AND Returning user can LOGIN
  */
 public class Login extends javax.swing.JFrame {
 
@@ -279,6 +288,11 @@ public class Login extends javax.swing.JFrame {
         // TODO add your handling code here:
     }//GEN-LAST:event_signupEmailActionPerformed
 
+    /**
+     * buttonLoginMouseClicked()
+     * This method handles when the User Login
+     * @param evt 
+     */
     private void buttonLoginMouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_buttonLoginMouseClicked
         // TODO add your handling code here:
         
@@ -362,6 +376,11 @@ public class Login extends javax.swing.JFrame {
         threadLogin.start();
     }//GEN-LAST:event_buttonLoginMouseClicked
 
+    /**
+     * btnSignupMouseClicked()
+     * This method handles the User SIGNUP
+     * @param evt 
+     */
     private void btnSignupMouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_btnSignupMouseClicked
         // TODO add your handling code here:
         
@@ -414,7 +433,7 @@ public class Login extends javax.swing.JFrame {
                             Login.getInstance().setVisible(false);
                             break;
 
-                        case DataPacket.ACTION_TYPE_LOGIN_FAILED:
+                        case DataPacket.ACTION_TYPE_SIGNUP_FAILED:
                             
                             System.out.println("Signup Failed!");
                             signupErrorLabel.setText(signupACKDataPacket.getMessage());

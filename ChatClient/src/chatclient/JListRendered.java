@@ -13,11 +13,24 @@ import javax.swing.ListCellRenderer;
 /**
  *
  * @author nxkundu
+ * 
+ * @email nxk161830@utdallas.edu
+ * @name Nirmallya Kundu
+ * 
+ * This class is used to render the Display Data 
+ * on the user screen.
  */
-public class JListRendered extends DefaultListCellRenderer implements ListCellRenderer<Object> {
+public class JListRendered extends DefaultListCellRenderer 
+        implements ListCellRenderer<Object> {
     
+    /*
+    * This method is override
+    * to custom display the messages
+    * text/image to the user
+    */
     @Override
-    public Component getListCellRendererComponent(JList<?> list, Object value, int index, boolean isSelected, boolean cellHasFocus) {
+    public Component getListCellRendererComponent(JList<?> list, Object value, 
+            int index, boolean isSelected, boolean cellHasFocus) {
 
         DisplayData displayData = (DisplayData) value;
 

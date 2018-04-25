@@ -8,12 +8,25 @@ import java.util.Date;
  * 
  * @author nxkundu
  * 
+ * @email nxk161830@utdallas.edu
+ * @name Nirmallya Kundu
+ * 
  * This is the Client BO (Business Object) Java beans
  * Which holds the information about the client who logs in
  * This client object is (broadcast) / sent in
  * MessageTo Field
  * MessageFrom Field
  * as both will be client
+ * 
+ * Methods:
+ * 
+ * 1> lastSeen() -This method is used to calculate when this client was last seen (last online)
+ * by calculating from the lastTimestamp field
+ * Conditions for lastSeen:
+ * lastSeenTimestamp < 10 seconds => ONLINE
+ * lastSeenTimestamp > 10 seconds => OFFLINE and 
+ * returns the lastTimestamp of the client in human readable format
+ * 
  *
  */
 public class Client implements Serializable{
@@ -104,11 +117,20 @@ public class Client implements Serializable{
 		
 	}
 
+	public boolean isOnline() {
+		long dt = new Date().getTime();
+		
+		if(dt - lastSeenTimestamp <= 9999) {
+			return true;
+		}
+		return false;
+	}
+
 	/****************************** toString *************************************/
 	@Override
 	public String toString() {
-		return "Client [userName=" + userName + ", id=" + id + ", name=" + name + ", inetAddress=" + inetAddress
-				+ ", port=" + port + ", lastSeenTimestamp=" + lastSeenTimestamp + "]";
+		return "Client [userName=" + userName + ", id=" + id + ", name=" + name + ", password=" + password
+				+ ", inetAddress=" + inetAddress + ", port=" + port + ", lastSeenTimestamp=" + lastSeenTimestamp + "]";
 	}
 	
 	/****************************** Getters Setters ******************************/
@@ -116,7 +138,6 @@ public class Client implements Serializable{
 	public String getId() {
 		return id;
 	}
-
 
 	public void setId(String id) {
 		this.id = id;
@@ -168,17 +189,6 @@ public class Client implements Serializable{
 
 	public void setLastSeenTimestamp(long lastSeenTimestamp) {
 		this.lastSeenTimestamp = lastSeenTimestamp;
-	}
-
-	
-
-	public boolean isOnline() {
-		long dt = new Date().getTime();
-		
-		if(dt - lastSeenTimestamp <= 9999) {
-			return true;
-		}
-		return false;
 	}
 
 	public String getPassword() {

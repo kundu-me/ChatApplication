@@ -28,6 +28,18 @@ import javax.swing.filechooser.FileNameExtensionFilter;
 /**
  *
  * @author nxkundu
+ * 
+ * @email nxk161830@utdallas.edu
+ * @name Nirmallya Kundu
+ * 
+ * CHAT SCREEN UI 
+ * 
+ * This class contains the main chat screen 
+ * After the user logged in
+ * This page is showed to the user
+ * with ONLINE OFFLINE clients
+ * and the chat history of the user
+ * Also the user can logout from this screen
  */
 public class ChatScreen extends javax.swing.JFrame implements Runnable{
 
@@ -46,6 +58,20 @@ public class ChatScreen extends javax.swing.JFrame implements Runnable{
     DefaultListModel<String> modelOnlineFriends = null;
     DefaultListModel<String> modelOfflineFriends = null;
     
+    /****************************** Constructors ******************************/
+    
+    /**
+     * Constructor
+     * When the chat Screen is called
+     * it shows the
+     * 
+     * 1> List of ONLINE Clients
+     * 2> List of OFFLINE Clients
+     * 3> The Chat History of all the client
+     * 
+     * @param client
+     * @param clientService 
+     */
     public ChatScreen(Client client, ClientService clientService) {
         initComponents();
         this.client = client;
@@ -111,12 +137,322 @@ public class ChatScreen extends javax.swing.JFrame implements Runnable{
     @Override
     public void run() {
         
+        /**
+        * updateFriendListThread() - this method starts the thread threadUpdateFriendList
+        * which updates the Clients as ONLINE/OFFLINE
+        * based on the received From the server
+        */
         updateFriendListThread();
         
+        /**
+        * receiveChatMessage() - this method starts the thread threadSendReceiveDataPacket
+        * which receives the messages from the server of a particular
+        * client whose chat is current open
+        * and displays it on the respective User Client Chat Screen
+        */
         receiveChatMessage();
         
+        /**
+        * receiveAllChatMessage() - this method starts the thread threadSendReceiveDataPacket
+        * which receives all the messages from the server of a all the clients
+        * EXCEPT the client whose chat is current open
+        * and buffers it to display it on the client as soon as 
+        * the client open that user client chat screen
+        */
         receiveAllChatMessage();
     }
+    
+    /**
+     * This method is used when the
+     * Client send a Personal/Broadcast
+     * Message to the Other Clients
+     */
+    private void sendMessage() {
+        
+        String message = txtMessage.getText();
+        String toClient = labelChatFriend.getText();
+        
+        if(message.length() == 0) {
+            return;
+        }
+        
+        mapModelChatHistory.get(toClient).addElement(new DisplayData("Me: " + message));
+        txtMessage.setText("");
+       
+        if(toClient.equals(DataPacket.MESSAGE_TYPE_BROADCAST_MESSAGE)) {
+            
+            message = client.getUserName() +" [BroadcastMessage]: " + message;
+            clientService.sendPacket(DataPacket.MESSAGE_TYPE_BROADCAST_MESSAGE, message, "");
+        }
+        else {
+            
+            message = client.getUserName() +": " + message;
+            clientService.sendPacket(DataPacket.MESSAGE_TYPE_MESSAGE, message, toClient);
+        }
+        
+        listChatHistory.ensureIndexIsVisible(mapModelChatHistory.get(toClient).getSize());
+    }
+    
+    /**
+     * This method is used when the
+     * Client send a Personal/Broadcast
+     * Multimedia Message (Image File) to the Other Clients
+     */
+    private void sendImage() {
+        
+        String message = txtMessage.getText();
+        String toClient = labelChatFriend.getText();
+        JFileChooser fileChooser = new JFileChooser();
+        
+        fileChooser.addChoosableFileFilter(new FileNameExtensionFilter("Image Files", "jpg", "png", "tif"));
+
+        if (fileChooser.showOpenDialog(rootPane) == JFileChooser.APPROVE_OPTION) {
+            
+            java.io.File file = fileChooser.getSelectedFile();
+        
+            if(toClient.equals(DataPacket.MESSAGE_TYPE_BROADCAST_MESSAGE)) {
+
+//                clientService.sendPacket(DataPacket.MESSAGE_TYPE_BROADCAST_IMAGE, file.getPath(), toClient);
+//                
+//                mapModelChatHistory.get(toClient).addElement(new DisplayData("Me: ", new ImageIcon(file.getPath())));
+            }
+            else {
+                
+                clientService.sendPacket(DataPacket.MESSAGE_TYPE_IMAGE_MESSAGE, file.getPath(), toClient);
+                
+                mapModelChatHistory.get(toClient).addElement(new DisplayData("Me: ", new ImageIcon(file.getPath())));
+            
+            }
+            listChatHistory.ensureIndexIsVisible(mapModelChatHistory.get(toClient).getSize());
+            
+        }
+    }
+    
+    /**
+     * updateFriendListThread() - this method starts the thread threadUpdateFriendList
+     * which updates the Clients as ONLINE/OFFLINE
+     * based on the received From the server
+     */
+    private void updateFriendListThread() {
+        
+        threadUpdateFriendList = new Thread("UpdateFriendList"){
+            @Override
+            public void run() {
+
+		while(ClientService.isLoggedIn) {
+
+                    updateFriendList();
+
+                    try {
+
+                            Thread.sleep(6000);
+                    }
+                    catch(Exception e) {
+
+                            e.printStackTrace();
+                    }
+                    
+		}
+            }
+	};
+
+	threadUpdateFriendList.start();
+    }
+    
+    /**
+     * updateFriendList() - this method updates the Clients as ONLINE/OFFLINE
+     * based on the received From the server
+     */
+    private void updateFriendList() {
+        
+        ConcurrentMap<String, Client> mapAllClients = clientService.getMapAllClients();
+       
+        if(mapAllClients != null && !mapAllClients.isEmpty()) {
+            
+            mapAllClients.remove(client.getUserName());
+            
+            for(String userName : mapAllClients.keySet()) {
+                    
+                if(mapAllClients.get(userName).isOnline()) {
+
+                    modelOfflineFriends.removeElement(userName);
+                    
+                    if(!modelOnlineFriends.contains(userName)) {
+                        
+                        modelOnlineFriends.addElement(userName);
+                    }
+                }
+                
+                if(!mapAllClients.get(userName).isOnline()) {
+
+                    modelOnlineFriends.removeElement(userName);
+                    
+                    if(!modelOfflineFriends.contains(userName)) {
+                        
+                        modelOfflineFriends.addElement(userName);
+                    }
+                }
+                
+                if(!mapModelChatHistory.containsKey(userName)) {
+                    DefaultListModel<DisplayData> model = new DefaultListModel<>();
+                    mapModelChatHistory.put(userName, model);
+                }
+            }
+            
+            listOnlineFriends.setModel(modelOnlineFriends);
+            listOfflineFriends.setModel(modelOfflineFriends);
+        }
+        
+        if(modelOnlineFriends.contains(labelChatFriend.getText())){
+            listOnlineFriends.setSelectedValue(labelChatFriend.getText(), true);
+        }
+        else {
+            listOnlineFriends.setSelectedIndex(-1);
+        }
+        
+        if(modelOfflineFriends.contains(labelChatFriend.getText())) {
+            listOfflineFriends.setSelectedValue(labelChatFriend.getText(), true);
+        }
+        else {
+            listOfflineFriends.setSelectedIndex(-1);
+        }
+    }
+    
+    /**
+     * receiveChatMessage() - this method starts the thread threadSendReceiveDataPacket
+     * which receives the messages from the server of a particular
+     * client whose chat is current open
+     * and displays it on the respective User Client Chat Screen
+     */
+    private void receiveChatMessage() {
+        
+        threadSendReceiveDataPacket = new Thread("SendReceiveDataPacket"){
+            @Override
+            public void run() {
+                
+                while(ClientService.isLoggedIn) {
+  
+                    String fromClient = labelChatFriend.getText();
+                    
+                    if(!fromClient.equals(DataPacket.MESSAGE_TYPE_BROADCAST_MESSAGE)) {
+                        
+                        Map<String, ConcurrentLinkedQueue<DataPacket>> mapClientReceivedDataPacket = null;
+                        mapClientReceivedDataPacket = clientService.getMapClientReceivedDataPacket();
+
+                        ConcurrentLinkedQueue<DataPacket> qDataPacket = mapClientReceivedDataPacket.get(fromClient);
+
+                        if(qDataPacket != null && !qDataPacket.isEmpty()) {
+
+                            DataPacket dataPacket = qDataPacket.poll();
+
+                            DefaultListModel<DisplayData> modelChatHistory = new DefaultListModel<>();
+                            if(mapModelChatHistory.containsKey(fromClient)) {
+                                modelChatHistory = mapModelChatHistory.get(fromClient);
+                            }
+                            
+                            switch(dataPacket.getMessageType()) {
+                                
+                                case DataPacket.MESSAGE_TYPE_MESSAGE:
+                                    modelChatHistory.addElement(new DisplayData(dataPacket.getMessage()));
+                                    break;
+                                    
+                                case DataPacket.MESSAGE_TYPE_BROADCAST_MESSAGE:
+                                    modelChatHistory.addElement(new DisplayData(dataPacket.getMessage()));
+                                    break;
+                                    
+                                case DataPacket.MESSAGE_TYPE_IMAGE_MESSAGE:
+                                    
+                                    BufferedImage bufferedImage = null;
+                                    try {
+                                        
+                                        bufferedImage = ImageIO.read(new ByteArrayInputStream(dataPacket.getByteImage()));
+                                    } 
+                                    catch (IOException e) {
+                                        
+                                        e.printStackTrace();
+                                    }
+                                    modelChatHistory.addElement(new DisplayData(dataPacket.getFromClient().getUserName(), (dataPacket.getByteImage())));
+                                    break;
+                            }
+                            
+                            listChatHistory.ensureIndexIsVisible(modelChatHistory.getSize());
+                        }
+                    }
+                    
+                    try {
+
+                            Thread.sleep(500);
+                    }
+                    catch(Exception e) {
+
+                            e.printStackTrace();
+                    }
+                    
+                }
+            }
+        };
+        
+        threadSendReceiveDataPacket.start();
+        
+    }
+    
+    /**
+     * receiveAllChatMessage() - this method starts the thread threadSendReceiveDataPacket
+     * which receives all the messages from the server of a all the clients
+     * EXCEPT the client whose chat is current open
+     * and buffers it to display it on the client as soon as 
+     * the client open that user client chat screen
+     */
+    private void receiveAllChatMessage() {
+        
+        threadSendReceiveAllDataPacket = new Thread("SendReceiveAllDataPacket"){
+            @Override
+            public void run() {
+                
+                while(ClientService.isLoggedIn) {
+                    
+                    Map<String, ConcurrentLinkedQueue<DataPacket>> mapClientReceivedDataPacket = null;
+                    mapClientReceivedDataPacket = clientService.getMapClientReceivedDataPacket();
+                    
+                    String exceptClient = labelChatFriend.getText();
+                    
+                    for(String fromClient : mapClientReceivedDataPacket.keySet()) { 
+                        
+                        if(fromClient.equals(exceptClient)) {
+                            continue;
+                        }
+  
+                        ConcurrentLinkedQueue<DataPacket> qDataPacket = mapClientReceivedDataPacket.get(fromClient);
+
+                        if(qDataPacket != null && !qDataPacket.isEmpty()) {
+
+                            DataPacket dataPacket = qDataPacket.poll();
+
+                            DefaultListModel<DisplayData> modelChatHistory = new DefaultListModel<>();
+                            if(mapModelChatHistory.containsKey(fromClient)) {
+                                modelChatHistory = mapModelChatHistory.get(fromClient);
+                            }
+                            modelChatHistory.addElement(new DisplayData(dataPacket.getMessage()));
+                        }
+                    }
+                    
+                    try {
+
+                            Thread.sleep(500);
+                    }
+                    catch(Exception e) {
+
+                            e.printStackTrace();
+                    }
+                    
+                }
+            }
+        };
+        
+        threadSendReceiveAllDataPacket.start();
+        
+    }
+
 
     /**
      * This method is called from within the constructor to initialize the form.
@@ -385,65 +721,15 @@ public class ChatScreen extends javax.swing.JFrame implements Runnable{
 
         pack();
     }// </editor-fold>//GEN-END:initComponents
-
-    private void sendMessage() {
-        
-        String message = txtMessage.getText();
-        String toClient = labelChatFriend.getText();
-        
-        if(message.length() == 0) {
-            return;
-        }
-        
-        mapModelChatHistory.get(toClient).addElement(new DisplayData("Me: " + message));
-        txtMessage.setText("");
-       
-        if(toClient.equals(DataPacket.MESSAGE_TYPE_BROADCAST_MESSAGE)) {
-            
-            message = client.getUserName() +" [BroadcastMessage]: " + message;
-            clientService.sendPacket(DataPacket.MESSAGE_TYPE_BROADCAST_MESSAGE, message, "");
-        }
-        else {
-            
-            message = client.getUserName() +": " + message;
-            clientService.sendPacket(DataPacket.MESSAGE_TYPE_MESSAGE, message, toClient);
-        }
-        
-        listChatHistory.ensureIndexIsVisible(mapModelChatHistory.get(toClient).getSize());
-    }
     
-    private void sendImage() {
-        
-        String message = txtMessage.getText();
-        String toClient = labelChatFriend.getText();
-        JFileChooser fileChooser = new JFileChooser();
-        
-        fileChooser.addChoosableFileFilter(new FileNameExtensionFilter("Image Files", "jpg", "png", "tif"));
-
-        if (fileChooser.showOpenDialog(rootPane) == JFileChooser.APPROVE_OPTION) {
-            
-            java.io.File file = fileChooser.getSelectedFile();
-        
-            if(toClient.equals(DataPacket.MESSAGE_TYPE_BROADCAST_MESSAGE)) {
-
-//                clientService.sendPacket(DataPacket.MESSAGE_TYPE_BROADCAST_IMAGE, file.getPath(), toClient);
-//                
-//                mapModelChatHistory.get(toClient).addElement(new DisplayData("Me: ", new ImageIcon(file.getPath())));
-            }
-            else {
-                
-                clientService.sendPacket(DataPacket.MESSAGE_TYPE_IMAGE_MESSAGE, file.getPath(), toClient);
-                
-                mapModelChatHistory.get(toClient).addElement(new DisplayData("Me: ", new ImageIcon(file.getPath())));
-            
-            }
-            listChatHistory.ensureIndexIsVisible(mapModelChatHistory.get(toClient).getSize());
-            
-        }
-    }
-    
+    /**
+     * buttonLogoutMouseClicked()
+     * This method handles the Logout of the User
+     * @param evt 
+     */
     private void buttonLogoutMouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_buttonLogoutMouseClicked
         // TODO add your handling code here:
+        
         clientService.logout();
         Login login = Login.getInstance();
         login.setVisible(true);
@@ -496,207 +782,6 @@ public class ChatScreen extends javax.swing.JFrame implements Runnable{
     private javax.swing.JTextField txtMessage;
     // End of variables declaration//GEN-END:variables
 
-    private void updateFriendListThread() {
-        
-        threadUpdateFriendList = new Thread("UpdateFriendList"){
-            @Override
-            public void run() {
-
-		while(ClientService.isLoggedIn) {
-
-                    updateFriendList();
-
-                    try {
-
-                            Thread.sleep(6000);
-                    }
-                    catch(Exception e) {
-
-                            e.printStackTrace();
-                    }
-                    
-		}
-            }
-	};
-
-	threadUpdateFriendList.start();
-    }
     
-    private void updateFriendList() {
-        
-        ConcurrentMap<String, Client> mapAllClients = clientService.getMapAllClients();
-       
-        if(mapAllClients != null && !mapAllClients.isEmpty()) {
-            
-            mapAllClients.remove(client.getUserName());
-            
-            for(String userName : mapAllClients.keySet()) {
-                    
-                if(mapAllClients.get(userName).isOnline()) {
-
-                    modelOfflineFriends.removeElement(userName);
-                    
-                    if(!modelOnlineFriends.contains(userName)) {
-                        
-                        modelOnlineFriends.addElement(userName);
-                    }
-                }
-                
-                if(!mapAllClients.get(userName).isOnline()) {
-
-                    modelOnlineFriends.removeElement(userName);
-                    
-                    if(!modelOfflineFriends.contains(userName)) {
-                        
-                        modelOfflineFriends.addElement(userName);
-                    }
-                }
-                
-                if(!mapModelChatHistory.containsKey(userName)) {
-                    DefaultListModel<DisplayData> model = new DefaultListModel<>();
-                    mapModelChatHistory.put(userName, model);
-                }
-            }
-            
-            listOnlineFriends.setModel(modelOnlineFriends);
-            listOfflineFriends.setModel(modelOfflineFriends);
-        }
-        
-        if(modelOnlineFriends.contains(labelChatFriend.getText())){
-            listOnlineFriends.setSelectedValue(labelChatFriend.getText(), true);
-        }
-        else {
-            listOnlineFriends.setSelectedIndex(-1);
-        }
-        
-        if(modelOfflineFriends.contains(labelChatFriend.getText())) {
-            listOfflineFriends.setSelectedValue(labelChatFriend.getText(), true);
-        }
-        else {
-            listOfflineFriends.setSelectedIndex(-1);
-        }
-    }
-    
-    private void receiveChatMessage() {
-        
-        threadSendReceiveDataPacket = new Thread("SendReceiveDataPacket"){
-            @Override
-            public void run() {
-                
-                while(ClientService.isLoggedIn) {
-  
-                    String fromClient = labelChatFriend.getText();
-                    
-                    if(!fromClient.equals(DataPacket.MESSAGE_TYPE_BROADCAST_MESSAGE)) {
-                        
-                        Map<String, ConcurrentLinkedQueue<DataPacket>> mapClientReceivedDataPacket = null;
-                        mapClientReceivedDataPacket = clientService.getMapClientReceivedDataPacket();
-
-                        ConcurrentLinkedQueue<DataPacket> qDataPacket = mapClientReceivedDataPacket.get(fromClient);
-
-                        if(qDataPacket != null && !qDataPacket.isEmpty()) {
-
-                            DataPacket dataPacket = qDataPacket.poll();
-
-                            DefaultListModel<DisplayData> modelChatHistory = new DefaultListModel<>();
-                            if(mapModelChatHistory.containsKey(fromClient)) {
-                                modelChatHistory = mapModelChatHistory.get(fromClient);
-                            }
-                            
-                            switch(dataPacket.getMessageType()) {
-                                
-                                case DataPacket.MESSAGE_TYPE_MESSAGE:
-                                    modelChatHistory.addElement(new DisplayData(dataPacket.getMessage()));
-                                    break;
-                                    
-                                case DataPacket.MESSAGE_TYPE_BROADCAST_MESSAGE:
-                                    modelChatHistory.addElement(new DisplayData(dataPacket.getMessage()));
-                                    break;
-                                    
-                                case DataPacket.MESSAGE_TYPE_IMAGE_MESSAGE:
-                                    
-                                    BufferedImage bufferedImage = null;
-                                    try {
-                                        
-                                        bufferedImage = ImageIO.read(new ByteArrayInputStream(dataPacket.getByteImage()));
-                                    } 
-                                    catch (IOException e) {
-                                        
-                                        e.printStackTrace();
-                                    }
-                                    modelChatHistory.addElement(new DisplayData(dataPacket.getFromClient().getUserName(), (dataPacket.getByteImage())));
-                                    break;
-                            }
-                            
-                            listChatHistory.ensureIndexIsVisible(modelChatHistory.getSize());
-                        }
-                    }
-                    
-                    try {
-
-                            Thread.sleep(500);
-                    }
-                    catch(Exception e) {
-
-                            e.printStackTrace();
-                    }
-                    
-                }
-            }
-        };
-        
-        threadSendReceiveDataPacket.start();
-        
-    }
-    
-    private void receiveAllChatMessage() {
-        
-        threadSendReceiveAllDataPacket = new Thread("SendReceiveAllDataPacket"){
-            @Override
-            public void run() {
-                
-                while(ClientService.isLoggedIn) {
-                    
-                    Map<String, ConcurrentLinkedQueue<DataPacket>> mapClientReceivedDataPacket = null;
-                    mapClientReceivedDataPacket = clientService.getMapClientReceivedDataPacket();
-                    
-                    String exceptClient = labelChatFriend.getText();
-                    
-                    for(String fromClient : mapClientReceivedDataPacket.keySet()) { 
-                        
-                        if(fromClient.equals(exceptClient)) {
-                            continue;
-                        }
-  
-                        ConcurrentLinkedQueue<DataPacket> qDataPacket = mapClientReceivedDataPacket.get(fromClient);
-
-                        if(qDataPacket != null && !qDataPacket.isEmpty()) {
-
-                            DataPacket dataPacket = qDataPacket.poll();
-
-                            DefaultListModel<DisplayData> modelChatHistory = new DefaultListModel<>();
-                            if(mapModelChatHistory.containsKey(fromClient)) {
-                                modelChatHistory = mapModelChatHistory.get(fromClient);
-                            }
-                            modelChatHistory.addElement(new DisplayData(dataPacket.getMessage()));
-                        }
-                    }
-                    
-                    try {
-
-                            Thread.sleep(500);
-                    }
-                    catch(Exception e) {
-
-                            e.printStackTrace();
-                    }
-                    
-                }
-            }
-        };
-        
-        threadSendReceiveAllDataPacket.start();
-        
-    }
 }
 

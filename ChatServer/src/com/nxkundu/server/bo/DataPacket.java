@@ -10,6 +10,10 @@ import com.google.gson.Gson;
 /**
  * 
  * @author nxkundu
+ * 
+ * @email nxk161830@utdallas.edu
+ * @name Nirmallya Kundu
+ * 
  * DataPacket
  * This DataPacket object is sent and received 
  * between the server and the client
@@ -30,6 +34,21 @@ import com.google.gson.Gson;
  * MESSAGE_TYPE_MESSAGE, MESSAGE_TYPE_BROADCAST_MESSAGE, MESSAGE_TYPE_IMAGE_MESSAGE
  * 
  * Each DataPacket has a unique Id UUID id
+ * 
+ * Methods:
+ * 
+ * 1> clone() - Creates a clone of the DataPacket object
+ * This is used in case of Broadcast Message
+ * as we need to make a clone of the same DataPacket object
+ * and send it to all the clients
+ * 
+ * 2> toJSON() - Converts the DataPacket object to the 
+ * JSON object making it suitable to send and receive 
+ * over the network
+ * 
+ * 3> getByteImage() - Decodes the Image  
+ * 
+ * 4> setByteImage() - Encodes the Image  
  * 
  *
  */
